@@ -117,7 +117,7 @@ enum Screen {
   category,
   players,
   settings,
-  howTo,
+  rules,
   pass,
   reveal,
   discuss,
@@ -229,13 +229,13 @@ class _BalatroPainter extends CustomPainter {
       final bx = cx + cos(angle) * b.dist;
       final by = cy + sin(angle) * b.dist;
       final paint = Paint()
-        ..color = b.color.withOpacity(0.38)
+        ..color = b.color.withValues(alpha: 0.38)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, b.radius * 0.45);
       canvas.drawCircle(Offset(bx, by), b.radius, paint);
     }
 
     final wavePaint = Paint()
-      ..color = const Color(0xFF5AA9FF).withOpacity(0.04)
+      ..color = const Color(0xFF5AA9FF).withValues(alpha: 0.04)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
@@ -341,6 +341,28 @@ class _GamePageState extends State<GamePage> {
         players.add('Player ${players.length + 1}');
       }
       players = players.sublist(0, playerCount);
+    });
+  }
+
+  void addPlayerAfter(int index) {
+    if (players.length >= selectedMode.maxPlayers) return;
+    Sound.tap();
+    setState(() {
+      int n = players.length + 1;
+      while (players.contains('Player $n')) {
+        n++;
+      }
+      players.insert(index + 1, 'Player $n');
+      playerCount = players.length;
+    });
+  }
+
+  void removePlayerAt(int index) {
+    if (players.length <= selectedMode.minPlayers) return;
+    Sound.tap();
+    setState(() {
+      players.removeAt(index);
+      playerCount = players.length;
     });
   }
 
@@ -578,30 +600,55 @@ class _GamePageState extends State<GamePage> {
   Future<void> showPassOptions() async {
     final choice = await showDialog<String>(
       context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Options', textAlign: TextAlign.center),
-        children: [
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'restart'),
-            child: const Text('Restart round', textAlign: TextAlign.center),
+      builder: (context) => Dialog(
+        backgroundColor: card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: border, width: 1.5),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Options',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: ink,
+                ),
+              ),
+              const SizedBox(height: 18),
+              _optionPill(
+                icon: Icons.refresh_rounded,
+                label: 'Restart round',
+                onTap: () => Navigator.pop(context, 'restart'),
+              ),
+              const SizedBox(height: 10),
+              _optionPill(
+                icon: Icons.people_alt_rounded,
+                label: 'Change players',
+                onTap: () => Navigator.pop(context, 'players'),
+              ),
+              const SizedBox(height: 10),
+              _optionPill(
+                icon: Icons.home_rounded,
+                label: 'Back to main menu',
+                onTap: () => Navigator.pop(context, 'home'),
+              ),
+              const SizedBox(height: 10),
+              _optionPill(
+                icon: Icons.close_rounded,
+                label: 'Cancel',
+                isCancel: true,
+                onTap: () => Navigator.pop(context, 'cancel'),
+              ),
+            ],
           ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'category'),
-            child: const Text('Change category', textAlign: TextAlign.center),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'players'),
-            child: const Text('Change players', textAlign: TextAlign.center),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'home'),
-            child: const Text('Back to main menu', textAlign: TextAlign.center),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'cancel'),
-            child: const Text('Cancel', textAlign: TextAlign.center),
-          ),
-        ],
+        ),
       ),
     );
     if (!mounted) return;
@@ -609,8 +656,6 @@ class _GamePageState extends State<GamePage> {
       case 'restart':
         Sound.start();
         startRound();
-      case 'category':
-        go(Screen.category);
       case 'players':
         go(Screen.players);
       case 'home':
@@ -619,6 +664,53 @@ class _GamePageState extends State<GamePage> {
       default:
         break;
     }
+  }
+
+  Widget _optionPill({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isCancel = false,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: isCancel ? Colors.transparent : card2,
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: isCancel ? border.withValues(alpha: 0.6) : border,
+            width: 1.5,
+          ),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const StadiumBorder(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: isCancel ? muted : yellow,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: isCancel ? muted : ink,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget passTopBar() => Row(
@@ -651,7 +743,7 @@ class _GamePageState extends State<GamePage> {
                     Screen.category => _category(),
                     Screen.players => _players(),
                     Screen.settings => _settings(),
-                    Screen.howTo => _howTo(),
+                    Screen.rules => _rules(),
                     Screen.pass => _pass(),
                     Screen.reveal => _reveal(),
                     Screen.discuss => _discuss(),
@@ -670,9 +762,55 @@ class _GamePageState extends State<GamePage> {
 
   // ---------- Shared widgets (all centred) ----------
 
-  Widget _logo({double size = 150}) => ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: Image.asset('assets/logo.png', width: size, height: size, fit: BoxFit.cover),
+  Widget _logo({double size = 150}) => Center(
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: size * 0.95,
+              height: size * 0.95,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: yellow.withValues(alpha: 0.28),
+                    blurRadius: 40,
+                    spreadRadius: 6,
+                  ),
+                  BoxShadow(
+                    color: blue.withValues(alpha: 0.22),
+                    blurRadius: 55,
+                    spreadRadius: 14,
+                  ),
+                ],
+              ),
+            ),
+            ShaderMask(
+              shaderCallback: (Rect bounds) {
+                return const RadialGradient(
+                  center: Alignment.center,
+                  radius: 0.65,
+                  colors: [
+                    Colors.black,
+                    Colors.black,
+                    Colors.transparent,
+                  ],
+                  stops: [0.0, 0.72, 1.0],
+                ).createShader(bounds);
+              },
+              blendMode: BlendMode.dstIn,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: Image.asset(
+                  'assets/logo.png',
+                  width: size,
+                  height: size,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ],
+        ),
       );
 
   Widget _primary(String label, VoidCallback? onPressed) => SizedBox(
@@ -773,9 +911,9 @@ class _GamePageState extends State<GamePage> {
             go(Screen.settings);
           }),
           const SizedBox(height: 8),
-          _secondary('How to Play', () {
+          _secondary('Rules', () {
             Sound.tap();
-            go(Screen.howTo);
+            go(Screen.rules);
           }),
         ],
       );
@@ -953,91 +1091,121 @@ class _GamePageState extends State<GamePage> {
                 style: const TextStyle(
                     color: yellow, fontSize: 13, fontWeight: FontWeight.w800)),
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 56,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: playerCount > selectedMode.minPlayers
-                      ? () {
-                          Sound.tap();
-                          setPlayerCount(playerCount - 1);
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: yellow,
-                      foregroundColor: const Color(0xFF1A1400),
-                      padding: EdgeInsets.zero,
-                      textStyle: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
-                  child: const Text('−'),
-                ),
-              ),
-              SizedBox(
-                width: 70,
-                child: Text('$playerCount',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800)),
-              ),
-              SizedBox(
-                width: 56,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: playerCount < selectedMode.maxPlayers
-                      ? () {
-                          Sound.tap();
-                          setPlayerCount(playerCount + 1);
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: yellow,
-                      foregroundColor: const Color(0xFF1A1400),
-                      padding: EdgeInsets.zero,
-                      textStyle: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
-                  child: const Text('+'),
-                ),
-              ),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            '${selectedMode.minPlayers} to ${selectedMode.maxPlayers} players. Names are optional.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: muted, fontSize: 14),
           ),
-          const SizedBox(height: 6),
-          Text('${selectedMode.minPlayers} to ${selectedMode.maxPlayers} players. Names are optional.',
-              textAlign: TextAlign.center, style: const TextStyle(color: muted)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           ...List.generate(playerCount, (i) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: TextField(
-                key: ValueKey('player-$i-$playerCount'),
-                textAlign: TextAlign.center,
-                controller: TextEditingController(text: players[i])
-                  ..selection = TextSelection.collapsed(offset: players[i].length),
-                onChanged: (v) {
-                  players[i] = v.trim().isEmpty ? 'Player ${i + 1}' : v.trim();
-                },
-                decoration: InputDecoration(
-                  labelText: 'Player ${i + 1}',
-                  filled: true,
-                  fillColor: const Color(0xFF12153A),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: border)),
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: card,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: border, width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: card2,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: border),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${i + 1}',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800, color: yellow, fontSize: 15),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          key: ValueKey('player-$i-$playerCount'),
+                          controller: TextEditingController(text: players[i])
+                            ..selection = TextSelection.collapsed(offset: players[i].length),
+                          onChanged: (v) {
+                            players[i] = v.trim().isEmpty ? 'Player ${i + 1}' : v.trim();
+                          },
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                          decoration: InputDecoration(
+                            hintText: 'Player ${i + 1}',
+                            hintStyle: const TextStyle(color: muted),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: Icon(
+                          Icons.remove_circle_outline_rounded,
+                          color: playerCount > selectedMode.minPlayers
+                              ? red
+                              : muted.withValues(alpha: 0.3),
+                        ),
+                        tooltip: 'Remove player',
+                        onPressed: playerCount > selectedMode.minPlayers
+                            ? () => removePlayerAt(i)
+                            : null,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+                if (playerCount < selectedMode.maxPlayers)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6, bottom: 12),
+                    child: Center(
+                      child: InkWell(
+                        onTap: () => addPlayerAfter(i),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: card2,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: border),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add_circle_outline_rounded, size: 18, color: yellow),
+                              SizedBox(width: 6),
+                              Text(
+                                'Add player',
+                                style: TextStyle(
+                                  color: ink,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  const SizedBox(height: 12),
+              ],
             );
           }),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           _primary('Start round', chosenCat == null
               ? null
               : () {
                   Sound.start();
                   startRound();
                 }),
-          const SizedBox(height: 8),
-          _secondary('Change category', () => go(Screen.category)),
-          const SizedBox(height: 8),
-          _secondary('Change mode', () => go(Screen.mode)),
           const SizedBox(height: 8),
           _secondary('Back to main menu', () => go(Screen.home)),
         ],
@@ -1054,21 +1222,27 @@ class _GamePageState extends State<GamePage> {
               if (v) Sound.tap();
             },
             title: const Text('Sound effects', textAlign: TextAlign.center),
-            activeColor: yellow,
+            activeThumbColor: yellow,
           ),
           const SizedBox(height: 10),
           const Text('Discussion timer',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
           const SizedBox(height: 10),
-          ...[0, 2, 3, 5].map((m) => RadioListTile<int>(
-                value: m,
-                groupValue: timerMinutes,
-                onChanged: (v) => setState(() => timerMinutes = v ?? 0),
-                title: Text(m == 0 ? 'No timer' : '$m minutes',
-                    textAlign: TextAlign.center),
-                activeColor: yellow,
-              )),
+          RadioGroup<int>(
+            groupValue: timerMinutes,
+            onChanged: (v) => setState(() => timerMinutes = v ?? 0),
+            child: Column(
+              children: [0, 2, 3, 5]
+                  .map((m) => RadioListTile<int>(
+                        value: m,
+                        title: Text(m == 0 ? 'No timer' : '$m minutes',
+                            textAlign: TextAlign.center),
+                        activeColor: yellow,
+                      ))
+                  .toList(),
+            ),
+          ),
           _mutedText('The timer is only a guide. You can vote early at any time.'),
           const SizedBox(height: 14),
           _card(Column(
@@ -1102,10 +1276,10 @@ class _GamePageState extends State<GamePage> {
         ],
       );
 
-  Widget _howTo() => Column(
+  Widget _rules() => Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _title('How to Play'),
+          _title('Rules'),
           _mutedText('Fraud Check — The English Barra El Salfa party game.\n3–10 players and one phone.'),
           const SizedBox(height: 10),
           _card(Column(
@@ -1182,92 +1356,297 @@ class _GamePageState extends State<GamePage> {
     final isFraud = fraudIndices.contains(idx);
     final isUndercover = idx == undercoverIndex;
     final last = passIdx == passOrder.length - 1;
+
+    final themeColor = isFraud
+        ? red
+        : isUndercover
+            ? purple
+            : green;
+
+    final bgGradient = isFraud
+        ? const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF4A1020), Color(0xFF220810)],
+          )
+        : isUndercover
+            ? const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF35175C), Color(0xFF190B2E)],
+              )
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF103D28), Color(0xFF081F14)],
+              );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         passTopBar(),
-        _passProgress(),
         const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: isFraud
-                ? const Color(0xFF3D1220)
-                : isUndercover
-                    ? const Color(0xFF2C194D)
-                    : const Color(0xFF12392A),
-            border: Border.all(
-                color: isFraud
-                    ? red
-                    : isUndercover
-                        ? purple
-                        : green,
-                width: 2),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: isFraud
-                ? [
-                    const Text('YOU ARE THE FRAUD!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 14),
-                    _categoryLabel(roundCat, size: 20),
-                    if (selectedMode.fraudCount > 1) ...[
-                      const SizedBox(height: 10),
-                      const Text(
-                        'There are 2 frauds this round! Listen closely and try to guess the secret word.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: muted, fontSize: 14),
+        TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutBack,
+          tween: Tween<double>(begin: 0.88, end: 1.0),
+          builder: (context, scale, child) {
+            return Transform.scale(
+              scale: scale,
+              child: child,
+            );
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 26),
+            decoration: BoxDecoration(
+              gradient: bgGradient,
+              border: Border.all(color: themeColor, width: 2.5),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: themeColor.withValues(alpha: 0.42),
+                  blurRadius: 32,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isFraud
+                        ? const Color(0xFF63152A)
+                        : isUndercover
+                            ? const Color(0xFF471F7A)
+                            : const Color(0xFF165236),
+                    border: Border.all(color: themeColor, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: themeColor.withValues(alpha: 0.5),
+                        blurRadius: 16,
                       ),
                     ],
-                  ]
-                : isUndercover
-                    ? [
-                        const Text('YOU ARE UNDERCOVER!',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 30,
-                                fontWeight: FontWeight.w900,
-                                color: purple)),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'You are the secret agent! Your word is slightly different from the others. Blend in, do not get caught, and try to identify the fraud!',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: muted, fontSize: 14),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    isFraud
+                        ? Icons.theater_comedy_rounded
+                        : isUndercover
+                            ? Icons.visibility_off_rounded
+                            : Icons.shield_rounded,
+                    color: Colors.white,
+                    size: 36,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: themeColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: themeColor),
+                  ),
+                  child: Text(
+                    isFraud
+                        ? '🎭 IMPOSTER'
+                        : isUndercover
+                            ? '🕵️ UNDERCOVER AGENT'
+                            : '🛡️ INNOCENT / SAFE',
+                    style: TextStyle(
+                      color: themeColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  isFraud
+                      ? 'YOU ARE THE FRAUD!'
+                      : isUndercover
+                          ? 'YOU ARE UNDERCOVER!'
+                          : 'YOU ARE SAFE',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                    color: isFraud ? Colors.white : themeColor,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: card2.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        categoryIcons[roundCat] ?? '📁',
+                        style: const TextStyle(fontSize: 18),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Category: $roundCat',
+                        style: const TextStyle(
+                          color: yellow,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
                         ),
-                        const SizedBox(height: 14),
-                        _categoryLabel(roundCat, size: 20),
-                        const SizedBox(height: 10),
-                        Text(roundUndercoverWord,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontSize: 38,
-                                fontWeight: FontWeight.w900,
-                                height: 1.15)),
-                      ]
-                    : [
-                        const Text('YOU ARE SAFE',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w900,
-                                color: green)),
-                        const SizedBox(height: 14),
-                        _categoryLabel(roundCat, size: 20),
-                        const SizedBox(height: 10),
-                        Text(roundWord,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontSize: 38,
-                                fontWeight: FontWeight.w900,
-                                height: 1.15)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (isFraud) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF280B14),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: red.withValues(alpha: 0.6),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: const Column(
+                      children: [
+                        Text(
+                          '? ? ?',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 4,
+                            color: red,
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'SECRET WORD UNKNOWN',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: muted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    selectedMode.fraudCount > 1
+                        ? 'There are 2 frauds this round! Listen closely, blend in, and try to deduce the secret word.'
+                        : 'Blend in! Listen to the clues, pretend you know the word, and deduce it before voting.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: muted, fontSize: 13, height: 1.4),
+                  ),
+                ] else if (isUndercover) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF210E3A),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: purple.withValues(alpha: 0.6),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'YOUR DECOY WORD',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: muted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          roundUndercoverWord,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.w900,
+                            height: 1.15,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Your word is slightly different from the safe players. Blend in and help expose the fraud!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: muted, fontSize: 13, height: 1.4),
+                  ),
+                ] else ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0C2B1C),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: green.withValues(alpha: 0.6),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'YOUR SECRET WORD',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: muted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          roundWord,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 38,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.1,
+                            height: 1.15,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Give subtle clues to prove you know the word without giving it away to the fraud!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: muted, fontSize: 13, height: 1.4),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         _primary(last ? 'Hide and start discussion' : 'Hide and pass on', hideAndPass),
       ],
     );
@@ -1360,41 +1739,134 @@ class _GamePageState extends State<GamePage> {
       children: [
         passTopBar(),
         _title('Who is the fraud?'),
-        Text('$voter, pick someone.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: muted, height: 1.55)),
-        Text('Vote ${voteIdx + 1} of ${players.length}',
-            textAlign: TextAlign.center,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: card2,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: yellow.withValues(alpha: 0.5)),
+          ),
+          child: Text(
+            '🗳️ Voter: $voter',
             style: const TextStyle(
-                color: muted, fontSize: 16, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 10),
+              color: yellow,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Vote ${voteIdx + 1} of ${players.length}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: muted,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 16),
         ...others.map((i) {
           final selected = votePick == i;
           return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () {
                   Sound.tap();
                   setState(() => votePick = i);
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: selected ? blue : card2,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      side: BorderSide(color: selected ? blue : border)),
-                  textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: selected ? const Color(0xFF1B2F5C) : card,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: selected ? blue : border,
+                      width: selected ? 2.2 : 1.5,
+                    ),
+                    boxShadow: selected
+                        ? [
+                            BoxShadow(
+                              color: blue.withValues(alpha: 0.38),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: selected ? blue : card2,
+                          border: Border.all(
+                            color: selected ? Colors.white : border,
+                            width: 1.5,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${i + 1}',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                            color: selected ? Colors.white : yellow,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              players[i],
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: ink,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Suspect #${i + 1}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: selected ? const Color(0xFF8DC0FF) : muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        selected
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                        color: selected ? blue : border,
+                        size: 28,
+                      ),
+                    ],
+                  ),
                 ),
-                child: Text(players[i], textAlign: TextAlign.center),
               ),
             ),
           );
         }),
-        _primary('Confirm vote',
-            votePick == null ? null : confirmIndividualVote),
+        const SizedBox(height: 8),
+        _primary(
+          votePick == null
+              ? 'Select a suspect'
+              : 'Confirm vote for ${players[votePick!]}',
+          votePick == null ? null : confirmIndividualVote,
+        ),
       ],
     );
   }
