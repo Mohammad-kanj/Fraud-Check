@@ -1,139 +1,88 @@
 # Fraud Check — Flutter app
 
 A genuine mobile app version of Fraud Check (the English برا السالفة game).
-One phone, 3–10 players, one fraud per round. No login, no internet,
-no account needed to play.
+One phone, 3–10 players, no login, no internet, offline party gameplay.
 
-## What is in this version (v1.1.0)
+## What is in this version (v1.2.0)
 
-- **Centred layout:** every screen is centred, with centred headings,
-  text, and buttons.
-- **Main menu:** text buttons only (Play / Settings / How to Play).
-  No menu icons, no tip at the bottom, no tagline.
-- **Setup is two pages:** first pick a category, then a separate
-  players page for the player count (3–10) and names. No "Step 1" /
-  "Step 2" labels.
-- **Passing the phone:** each pass card shows progress like "1 of 5".
-  A three-dot options menu in the top right while passing offers:
-  Restart round, Change category, Change players, Back to main menu.
-- **Reveal cards:** the fraud card shows "YOU ARE THE FRAUD!" plus
-  the category. A player in the know sees "YOU ARE SAFE", then the
-  category and the word.
-- **Categories:** the category name is always bright yellow
-  (#FFD23F) on the dark background, so it never blends into the card.
-  Category icons are still shown on the category page only.
-- **Sound effects:** short generated sounds for tapping, starting a
-  round, revealing a card, voting, guessing, winning, and losing.
-  They live in `assets/sounds/` and can be switched off in Settings.
-  If a sound fails, the game still works.
-- **Launcher icon:** the icon you see on the phone's home screen is
-  now the app's own logo (`assets/launcher_icon.png`, full-bleed navy
-  so there are no white corners), not the default Flutter icon. The
-  GitHub workflow and the computer build both run
-  `dart run flutter_launcher_icons` to generate it.
-- **Background:** a Balatro-style animated background behind every
-  screen — slow swirling blobs in deep red, teal, gold, and purple,
-  with wavy rings rippling out from the centre, kept dark so text
-  stays readable. It is drawn with plain CustomPaint, so the build
-  needs no shader files.
-- **Logo:** the user's own supplied logo — faceless silhouette with
-  dark hair, high-collared coat with white and gold outline, gold
-  magnifying glass, navy background. (Supplied 2026-10-29 as
-  template_logo; converted to PNG for the app asset.)
-- **Words:** same 20 categories (602 words). One fix: Clothing had
-  "Shorts" twice; it is now listed once.
+- **Game Modes (Configurable in code):**
+  - **Classic:** 1 fraud who only knows the category. Pure deduction (3–10 players).
+  - **Two Frauds:** 2 players are chosen as frauds. Double the deception and chaos (4–10 players).
+  - **Undercover:** 1 fraud + 1 undercover agent. The undercover agent is explicitly informed of their role and given a different decoy word from the same category to blend in (4–10 players).
+  - Modes are defined cleanly in code (`availableGameModes` in `lib/main.dart`), making it easy to add or customize modes directly in Dart.
+- **Main Menu Setup Flow (Option C):**
+  - Mode selection is integrated into the setup flow directly from the **Main Menu** (Play $\rightarrow$ Select Mode $\rightarrow$ Pick Category $\rightarrow$ Players).
+  - The in-game three-dot options menu (`showPassOptions`) during card passing remains clean and restricted strictly to round management (`Restart round`, `Change category`, `Change players`, `Back to main menu`).
+- **Authentic Barra El Salfa Scoring (+100 Party Points):**
+  - **Caught Fraud misses guess:** Every player who personally voted for the caught fraud earns **+100 points**! Players who voted for an innocent player receive 0 points.
+  - **Fraud Escapes or Guesses Right:** The fraud(s) earn **+100 points**! Safe players receive 0 points.
+  - **Undercover Agent:** Earns **+100 points** if they vote for the fraud or survive unexposed.
+  - The results screen details the complete breakdown: mode played, secret word, category, who the fraud(s) and undercover were, and a detailed round points log showing each player's action and points earned.
+- **Centred layout & Balatro-style background:**
+  - Responsive, centered layout with dark navy palette, gold/yellow accents, and smooth procedural swirling blobs and ripple rings.
+- **Sound effects & Offline Play:**
+  - Generated sounds for tapping, starting rounds, card reveals, voting, guessing, winning, and losing.
+  - Can be toggled on/off in Settings.
 
 ## How it plays
 
-1. Pick one category, then set the player count (3–10) and edit names
-   if you like.
-2. Pass the phone. Each player taps to reveal their own card, then
-   hides it. Players in the know are SAFE; the fraud sees only the
-   category.
-3. Discuss without saying the word.
-4. Vote: every player, one at a time and in private, picks someone
-   else. The fraud is only caught if MORE THAN HALF of all votes are
-   for the fraud. If not, the fraud wins the round. The result screen
-   shows the vote tally.
-5. Last chance: if the fraud was caught by a majority, the fraud gets
-   4 words from the same category to guess from. A right guess steals
-   the round.
-6. Scores are tracked for the session. Words do not repeat until a
-   category runs out.
-7. At the end of a round, only two buttons remain: "Start a new round"
-   and "Return to main menu". Clearing scores is still available in
-   Settings ("Reset scores and used words").
+1. Tap **Play** from the Main Menu, pick a **Game Mode** (Classic, Two Frauds, or Undercover), then choose a **Category** and configure your **Players** (3–10).
+2. **Pass the phone:** Each player privately reveals their own card:
+   - Safe players see `"YOU ARE SAFE"`, the category, and the secret word.
+   - The fraud sees `"YOU ARE THE FRAUD!"` and only the category.
+   - The undercover agent sees `"YOU ARE UNDERCOVER!"`, the category, and their secret decoy word.
+3. **Discuss:** Players take turns asking questions and giving clues without saying their secret word.
+4. **Vote:** Each player, one at a time and in private, votes for someone else.
+5. **Last chance:** If a fraud is caught by majority vote (> 50%), they get 4 word options from the category to guess from. A correct guess steals the round!
+6. **Scoring:** Points are awarded using authentic *Barra El Salfa* rules (+100 party points per correct vote or fraud escape).
+7. Session scores are tracked on the Leaderboard across rounds.
 
-## Getting it onto your phone
+## Adding or Editing Game Modes in Code
 
-A Flutter folder cannot be opened directly on a phone — Dart code has
-to be built once into an installable app. There are two ways to do that
-build. The APK route below is for **Android**. If you are on an iPhone,
-tell me and I will give you the Xcode route instead.
+All game modes are declared in `lib/main.dart` in the `availableGameModes` list:
 
-### Option A — easiest, no software to install (GitHub Actions)
-
-1. Create a **public** GitHub repo (email signup is fine) and upload
-   everything in this folder, keeping the folder structure as it is
-   (`lib/`, `assets/`, `pubspec.yaml`, `.github/workflows/`).
-2. Go to the repo's **Actions** tab. The "Build APK" workflow runs
-   automatically (or press Run workflow).
-3. When it finishes with a green tick, open the run, download the
-   **fraud-check-apk** artifact, unzip it on your phone, and open the
-   `.apk` file. Your phone will ask you to allow installing from that
-   source — allow it once for this file.
-4. Fraud Check appears on your phone like any other app, and then
-   works fully offline.
-
-### Option B — on a computer with Flutter installed
-
-```sh
-flutter create --project-name fraud_check --org com.fraudcheck app
-cp lib/main.dart lib/categories.dart app/lib/
-cp -r assets app/assets
-cp pubspec.yaml app/pubspec.yaml
-cd app
-flutter pub get
-dart run flutter_launcher_icons
-flutter build apk --release
+```dart
+const List<GameMode> availableGameModes = [
+  GameMode(
+    id: GameModeId.classic,
+    title: 'Classic',
+    subtitle: '1 fraud who only knows the category. Pure deduction.',
+    minPlayers: 3,
+    fraudCount: 1,
+    hasUndercover: false,
+  ),
+  GameMode(
+    id: GameModeId.twoFrauds,
+    title: 'Two Frauds',
+    subtitle: '2 frauds in the mix. Double the chaos and deception!',
+    minPlayers: 4,
+    fraudCount: 2,
+    hasUndercover: false,
+  ),
+  GameMode(
+    id: GameModeId.undercover,
+    title: 'Undercover',
+    subtitle: '1 fraud + 1 undercover agent with a secret decoy word!',
+    minPlayers: 4,
+    fraudCount: 1,
+    hasUndercover: true,
+  ),
+];
 ```
 
-The APK is then at `app/build/app/outputs/flutter-apk/app-release.apk`.
-Copy it to your phone and open it to install.
+To add another mode (for example, 3 Frauds for larger parties), simply add another `GameMode` entry to `availableGameModes` and the app automatically displays it and enforces its rules!
 
-## Updating the app later (no remake needed)
+## Building the App
 
-You never have to rebuild the app from scratch or redo the whole
-process. Change only what you want changed, then build again:
+### Option A — GitHub Actions (No local install needed)
+1. Push this folder to a GitHub repository.
+2. In the **Actions** tab, the `Build APK` workflow runs automatically.
+3. Download the `fraud-check-apk` artifact and install the `.apk` on your Android phone.
 
-- Logo only: replace `assets/logo.png` AND `assets/launcher_icon.png`
-  with the new logo (the second one is the home-screen icon).
-- Sounds only: replace a file in `assets/sounds/`.
-- Wording, rules, screens, or scoring: edit `lib/main.dart`.
-- Words or categories: edit `lib/categories.dart`.
-
-Then, using the same repo/project as before:
-
-- **GitHub route:** replace just the changed file(s) in the same repo
-  and push. Actions builds a new APK automatically. Download it and
-  install it over the old app — same name, same app, it replaces it.
-  Scores are session-only, so there is nothing saved to lose. If a
-  phone ever refuses to install over the old version, uninstall the
-  old one first and then install the new one.
-- **Computer route:** copy the changed file(s) into the `app/` folder
-  again, run `dart run flutter_launcher_icons` if the logo changed,
-  and run `flutter build apk --release` again.
-
-## Files in this folder
-
-- `lib/main.dart` — the whole game (screens, rounds, voting, scoring,
-  sounds, background).
-- `lib/categories.dart` — the 20 categories, word lists, and category icons.
-- `assets/logo.png` — the logo, shown on the main menu.
-- `assets/launcher_icon.png` — the logo, used as the home-screen icon.
-- `assets/sounds/` — the sound effects (tap, start, reveal, vote,
-  guess, win, lose).
-- `pubspec.yaml` — app name, version, assets, and the launcher-icon
-  setup.
-- `.github/workflows/build-apk.yml` — builds the APK automatically,
-  including the launcher icon.
+### Option B — Local Flutter Build
+```sh
+cd fraud-check-flutter
+flutter pub get
+flutter build apk --release
+```
+The APK is generated at `build/app/outputs/flutter-apk/app-release.apk`.

@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 import 'categories.dart';
 
 // Fraud Check — pass-and-play party game, one phone, 3–10 players.
-// One player is the fraud and only sees the category.
-// Everyone else sees the category and the secret word, and is SAFE.
-// No login, no internet, no storage: scores and used words live
-// only for this session.
+// Inspired by "برا السالفة" (Barra El Salfa) — the English mobile edition.
+// Modes: Classic (1 Fraud), Two Frauds (2 Frauds), Undercover (1 Fraud + 1 Undercover).
+// Authentic Barra El Salfa scoring: 100 party points awarded to players who correctly vote for caught frauds.
+// No login, no internet, no storage: scores and used words live only for this session.
 
 // ---------- Colours ----------
 const bg = Color(0xFF0F1226);
@@ -23,6 +23,64 @@ const yellow = Color(0xFFFFD23F);
 const green = Color(0xFF3DDC84);
 const red = Color(0xFFFF5D73);
 const blue = Color(0xFF5AA9FF);
+const purple = Color(0xFFB066FF);
+
+// Barra El Salfa party points
+const int roundPoints = 100;
+
+// ---------- Game Modes (Configurable in code) ----------
+enum GameModeId {
+  classic,
+  twoFrauds,
+  undercover,
+}
+
+class GameMode {
+  final GameModeId id;
+  final String title;
+  final String subtitle;
+  final int minPlayers;
+  final int maxPlayers;
+  final int fraudCount;
+  final bool hasUndercover;
+
+  const GameMode({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    this.minPlayers = 3,
+    this.maxPlayers = 10,
+    this.fraudCount = 1,
+    this.hasUndercover = false,
+  });
+}
+
+const List<GameMode> availableGameModes = [
+  GameMode(
+    id: GameModeId.classic,
+    title: 'Classic',
+    subtitle: '1 fraud who only knows the category. Pure deduction.',
+    minPlayers: 3,
+    fraudCount: 1,
+    hasUndercover: false,
+  ),
+  GameMode(
+    id: GameModeId.twoFrauds,
+    title: 'Two Frauds',
+    subtitle: '2 frauds in the mix. Double the chaos and deception!',
+    minPlayers: 4,
+    fraudCount: 2,
+    hasUndercover: false,
+  ),
+  GameMode(
+    id: GameModeId.undercover,
+    title: 'Undercover',
+    subtitle: '1 fraud + 1 undercover agent with a secret decoy word!',
+    minPlayers: 4,
+    fraudCount: 1,
+    hasUndercover: true,
+  ),
+];
 
 // ---------- Sound effects ----------
 // Tiny generated WAVs in assets/sounds/. Everything is wrapped in
@@ -55,6 +113,7 @@ void main() => runApp(const FraudCheckApp());
 
 enum Screen {
   home,
+  mode,
   category,
   players,
   settings,
@@ -85,14 +144,7 @@ class FraudCheckApp extends StatelessWidget {
   }
 }
 
-
 // ---------- Balatro-style background ----------
-// A slow, swirling, liquid background behind every screen: dark navy
-// base, with large soft blobs in deep red, teal, gold and purple
-// orbiting the centre, plus wavy rings that ripple around them.
-// Kept dark and translucent so text and cards stay readable, and
-// drawn with plain CustomPaint (no shader files, so the build
-// needs nothing extra).
 class BalatroBackground extends StatefulWidget {
   const BalatroBackground({super.key});
 
@@ -102,99 +154,133 @@ class BalatroBackground extends StatefulWidget {
 
 class _BalatroBackgroundState extends State<BalatroBackground>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
+  late final AnimationController _ctrl;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 24),
-    )..repeat();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 24))
+      ..repeat();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _controller,
-      builder: (_, __) => CustomPaint(
-        painter: _SwirlPainter(_controller.value),
-        size: Size.infinite,
+      animation: _ctrl,
+      builder: (context, _) => CustomPaint(
+        painter: _BalatroPainter(t: _ctrl.value * 2 * pi),
       ),
     );
   }
 }
 
-class _SwirlPainter extends CustomPainter {
+class _BalatroPainter extends CustomPainter {
   final double t;
-  const _SwirlPainter(this.t);
+  _BalatroPainter({required this.t});
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..color = bg,
-    );
-    final centre = Offset(size.width / 2, size.height / 2);
-    const blobColours = [
-      Color(0xFF7A1F2B),
-      Color(0xFF1F5A5A),
-      Color(0xFF8A6D1F),
-      Color(0xFF3A2A6B),
-      Color(0xFF5A1F3A),
-      Color(0xFF1F3A5A),
+    final bgPaint = Paint()..color = const Color(0xFF0A0C1C);
+    canvas.drawRect(Offset.zero & size, bgPaint);
+
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final minDim = min(size.width, size.height);
+
+    final blobs = [
+      _Blob(
+        color: const Color(0xFF8B1E3F),
+        radius: minDim * 0.55,
+        dist: minDim * 0.35,
+        speed: 1.0,
+        phase: 0.0,
+      ),
+      _Blob(
+        color: const Color(0xFF0F5B66),
+        radius: minDim * 0.50,
+        dist: minDim * 0.30,
+        speed: -0.7,
+        phase: 2.1,
+      ),
+      _Blob(
+        color: const Color(0xFF8C6D1F),
+        radius: minDim * 0.45,
+        dist: minDim * 0.40,
+        speed: 0.5,
+        phase: 4.2,
+      ),
+      _Blob(
+        color: const Color(0xFF4B2375),
+        radius: minDim * 0.60,
+        dist: minDim * 0.25,
+        speed: -1.2,
+        phase: 1.3,
+      ),
     ];
-    for (var i = 0; i < blobColours.length; i++) {
-      final angle = t * 2 * pi + i * (2 * pi / blobColours.length);
-      final blobCentre = Offset(
-        centre.dx + cos(angle) * size.width * 0.28,
-        centre.dy + sin(angle) * size.height * 0.22,
-      );
-      final radius = size.longestSide * (0.28 + 0.06 * (i % 2));
+
+    for (final b in blobs) {
+      final angle = t * b.speed + b.phase;
+      final bx = cx + cos(angle) * b.dist;
+      final by = cy + sin(angle) * b.dist;
       final paint = Paint()
-        ..shader = RadialGradient(
-          colors: [blobColours[i].withAlpha(110), blobColours[i].withAlpha(0)],
-        ).createShader(Rect.fromCircle(center: blobCentre, radius: radius));
-      canvas.drawCircle(blobCentre, radius, paint);
+        ..color = b.color.withOpacity(0.38)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, b.radius * 0.45);
+      canvas.drawCircle(Offset(bx, by), b.radius, paint);
     }
-    for (var r = 0; r < 5; r++) {
-      final baseRadius = size.longestSide * (0.10 + r * 0.09);
+
+    final wavePaint = Paint()
+      ..color = const Color(0xFF5AA9FF).withOpacity(0.04)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    for (var ring = 1; ring <= 6; ring++) {
+      final baseR = ring * (minDim * 0.11);
       final path = Path();
-      for (var a = 0; a <= 64; a++) {
-        final angle = a / 64 * 2 * pi;
-        final ripple = 14 * sin(angle * 3 + t * 2 * pi + r);
-        final radius = baseRadius + ripple;
-        final point = Offset(
-          centre.dx + radius * cos(angle),
-          centre.dy + radius * sin(angle),
-        );
-        if (a == 0) {
-          path.moveTo(point.dx, point.dy);
+      const steps = 60;
+      for (var i = 0; i <= steps; i++) {
+        final a = (i / steps) * 2 * pi;
+        final wave = sin(a * 4 + t * 2 + ring) * (minDim * 0.015) +
+            cos(a * 2 - t + ring) * (minDim * 0.01);
+        final r = baseR + wave;
+        final px = cx + cos(a) * r;
+        final py = cy + sin(a) * r;
+        if (i == 0) {
+          path.moveTo(px, py);
         } else {
-          path.lineTo(point.dx, point.dy);
+          path.lineTo(px, py);
         }
       }
       path.close();
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = (r.isEven ? yellow : green).withAlpha(28)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2,
-      );
+      canvas.drawPath(path, wavePaint);
     }
   }
 
   @override
-  bool shouldRepaint(_SwirlPainter old) => old.t != t;
+  bool shouldRepaint(_BalatroPainter oldDelegate) => oldDelegate.t != t;
 }
 
+class _Blob {
+  final Color color;
+  final double radius;
+  final double dist;
+  final double speed;
+  final double phase;
+  _Blob({
+    required this.color,
+    required this.radius,
+    required this.dist,
+    required this.speed,
+    required this.phase,
+  });
+}
+
+// ---------- Main Game Widget ----------
 class GamePage extends StatefulWidget {
   const GamePage({super.key});
 
@@ -204,6 +290,7 @@ class GamePage extends StatefulWidget {
 
 class _GamePageState extends State<GamePage> {
   Screen screen = Screen.home;
+  GameMode selectedMode = availableGameModes[0];
   String? chosenCat;
   int playerCount = 4;
   List<String> players = ['Player 1', 'Player 2', 'Player 3', 'Player 4'];
@@ -211,25 +298,33 @@ class _GamePageState extends State<GamePage> {
   final Map<String, int> scores = {};
   final Set<String> usedWords = {};
 
-  // Current round.
+  // Current round state.
   String roundCat = '';
   String roundWord = '';
-  int fraudIndex = 0;
+  String roundUndercoverWord = '';
+  Set<int> fraudIndices = {};
+  int? undercoverIndex;
   List<int> passOrder = [];
   int passIdx = 0;
   bool revealed = false;
-  // Voting: every player votes, one at a time, for someone else.
+
+  // Voting: every player votes, one at a time, for someone else in private.
   int voteIdx = 0;
   bool voteRevealed = false;
   int? votePick;
   List<int> allVotes = [];
+  Map<int, int> playerVotes = {}; // voterIndex -> targetIndex
   Map<int, int> voteCounts = {};
   bool fraudCaughtByMajority = false;
-  int fraudVoteCount = 0;
+  Set<int> caughtFrauds = {};
+  int guessingFraudIndex = 0;
   List<String> guessOptions = [];
   int? guessPick;
   Timer? timer;
   int secondsLeft = 0;
+
+  // Points awarded this round (Barra El Salfa rule tracking)
+  Map<int, int> pointsEarnedThisRound = {};
 
   @override
   void dispose() {
@@ -241,7 +336,7 @@ class _GamePageState extends State<GamePage> {
 
   void setPlayerCount(int n) {
     setState(() {
-      playerCount = n.clamp(3, 10);
+      playerCount = n.clamp(selectedMode.minPlayers, selectedMode.maxPlayers);
       while (players.length < playerCount) {
         players.add('Player ${players.length + 1}');
       }
@@ -262,10 +357,28 @@ class _GamePageState extends State<GamePage> {
     final rng = Random();
     final word = pool[rng.nextInt(pool.length)];
     usedWords.add('$cat|$word');
+
+    // Pick undercover decoy word if mode has undercover
+    String undercoverWord = '';
+    if (selectedMode.hasUndercover) {
+      final otherWords = categories[cat]!.where((w) => w != word).toList()..shuffle(rng);
+      undercoverWord = otherWords.isNotEmpty ? otherWords.first : 'Decoy';
+    }
+
+    // Assign roles randomly
+    final indices = List.generate(players.length, (i) => i)..shuffle(rng);
+    final frauds = indices.take(selectedMode.fraudCount).toSet();
+    int? undercover;
+    if (selectedMode.hasUndercover && indices.length > selectedMode.fraudCount) {
+      undercover = indices[selectedMode.fraudCount];
+    }
+
     setState(() {
       roundCat = cat;
       roundWord = word;
-      fraudIndex = rng.nextInt(players.length);
+      roundUndercoverWord = undercoverWord;
+      fraudIndices = frauds;
+      undercoverIndex = undercover;
       passOrder = List.generate(players.length, (i) => i)..shuffle(rng);
       passIdx = 0;
       revealed = false;
@@ -273,11 +386,14 @@ class _GamePageState extends State<GamePage> {
       voteRevealed = false;
       votePick = null;
       allVotes = [];
+      playerVotes = {};
       voteCounts = {};
       fraudCaughtByMajority = false;
-      fraudVoteCount = 0;
+      caughtFrauds = {};
+      guessingFraudIndex = frauds.first;
       guessOptions = [];
       guessPick = null;
+      pointsEarnedThisRound = {};
       for (final p in players) {
         scores.putIfAbsent(p, () => 0);
       }
@@ -329,9 +445,11 @@ class _GamePageState extends State<GamePage> {
       voteRevealed = false;
       votePick = null;
       allVotes = [];
+      playerVotes = {};
       voteCounts = {};
       fraudCaughtByMajority = false;
-      fraudVoteCount = 0;
+      caughtFrauds = {};
+      pointsEarnedThisRound = {};
       screen = Screen.vote;
     });
   }
@@ -341,6 +459,7 @@ class _GamePageState extends State<GamePage> {
     Sound.vote();
     setState(() {
       allVotes.add(votePick!);
+      playerVotes[voteIdx] = votePick!;
       voteCounts[votePick!] = (voteCounts[votePick!] ?? 0) + 1;
       if (voteIdx < players.length - 1) {
         voteIdx++;
@@ -353,20 +472,43 @@ class _GamePageState extends State<GamePage> {
   }
 
   void tallyVotes() {
-    fraudVoteCount = voteCounts[fraudIndex] ?? 0;
-    // The fraud is only caught if MORE THAN HALF of all votes
-    // are for the fraud. Anything less, and the fraud wins.
-    fraudCaughtByMajority = fraudVoteCount > players.length / 2;
-    if (fraudCaughtByMajority) {
+    caughtFrauds.clear();
+    pointsEarnedThisRound.clear();
+    final majorityThreshold = players.length / 2;
+
+    for (final f in fraudIndices) {
+      if ((voteCounts[f] ?? 0) > majorityThreshold) {
+        caughtFrauds.add(f);
+      }
+    }
+
+    if (caughtFrauds.isNotEmpty) {
+      fraudCaughtByMajority = true;
+      // Caught fraud with highest votes guesses
+      guessingFraudIndex = caughtFrauds.reduce(
+          (a, b) => (voteCounts[a] ?? 0) >= (voteCounts[b] ?? 0) ? a : b);
+
       final decoys = categories[roundCat]!
-          .where((w) => w != roundWord)
+          .where((w) => w != roundWord && w != roundUndercoverWord)
           .toList()
         ..shuffle();
       guessOptions = [roundWord, ...decoys.take(3)]..shuffle();
       guessPick = null;
       screen = Screen.guess;
     } else {
-      scores[players[fraudIndex]] = (scores[players[fraudIndex]] ?? 0) + 1;
+      fraudCaughtByMajority = false;
+      // Frauds escape! Each fraud earns +100 points
+      for (final f in fraudIndices) {
+        scores[players[f]] = (scores[players[f]] ?? 0) + roundPoints;
+        pointsEarnedThisRound[f] = roundPoints;
+      }
+      // If undercover survived without majority votes against them, undercover earns points
+      if (undercoverIndex != null &&
+          (voteCounts[undercoverIndex!] ?? 0) <= majorityThreshold) {
+        scores[players[undercoverIndex!]] =
+            (scores[players[undercoverIndex!]] ?? 0) + roundPoints;
+        pointsEarnedThisRound[undercoverIndex!] = roundPoints;
+      }
       screen = Screen.result;
       Sound.lose();
     }
@@ -376,14 +518,27 @@ class _GamePageState extends State<GamePage> {
     if (guessPick == null) return;
     Sound.guess();
     setState(() {
+      pointsEarnedThisRound.clear();
       if (guessOptions[guessPick!] == roundWord) {
-        scores[players[fraudIndex]] = (scores[players[fraudIndex]] ?? 0) + 1;
+        // Fraud successfully guessed the secret word! Frauds steal the round.
+        for (final f in fraudIndices) {
+          scores[players[f]] = (scores[players[f]] ?? 0) + roundPoints;
+          pointsEarnedThisRound[f] = roundPoints;
+        }
         screen = Screen.result;
         Sound.lose();
       } else {
-        for (var i = 0; i < players.length; i++) {
-          if (i != fraudIndex) {
-            scores[players[i]] = (scores[players[i]] ?? 0) + 1;
+        // Fraud guessed wrong!
+        // Authentic Barra El Salfa scoring:
+        // Every player who voted for ANY caught fraud earns +100 party points!
+        for (int voter = 0; voter < players.length; voter++) {
+          if (!fraudIndices.contains(voter)) {
+            final target = playerVotes[voter];
+            if (target != null && caughtFrauds.contains(target)) {
+              scores[players[voter]] =
+                  (scores[players[voter]] ?? 0) + roundPoints;
+              pointsEarnedThisRound[voter] = roundPoints;
+            }
           }
         }
         screen = Screen.result;
@@ -392,24 +547,34 @@ class _GamePageState extends State<GamePage> {
     });
   }
 
+  bool get fraudGuessedCorrectly =>
+      guessPick != null && guessOptions[guessPick!] == roundWord;
+
   String get resultTitle {
-    if (!fraudCaughtByMajority) return 'The fraud wins!';
-    if (guessPick != null && guessOptions[guessPick!] == roundWord) {
-      return 'The fraud escapes!';
+    if (!fraudCaughtByMajority) {
+      return selectedMode.fraudCount > 1
+          ? 'The frauds win!'
+          : 'The fraud wins!';
+    }
+    if (fraudGuessedCorrectly) {
+      return selectedMode.fraudCount > 1
+          ? 'The frauds escape!'
+          : 'The fraud escapes!';
     }
     return 'The players in the know win!';
   }
 
   String get resultLine {
     if (!fraudCaughtByMajority) {
-      return 'Only $fraudVoteCount of ${players.length} voted for the fraud — not a majority, so the fraud takes the round.';
+      return 'No fraud received more than half of the votes, so the fraud takes the round.';
     }
-    if (guessPick != null && guessOptions[guessPick!] == roundWord) {
-      return 'The fraud guessed the word.';
+    if (fraudGuessedCorrectly) {
+      return '${players[guessingFraudIndex]} guessed the secret word ("$roundWord") and stole the round!';
     }
-    return 'The fraud was caught and guessed wrong.';
+    return 'The fraud was caught by majority vote and failed to guess the secret word.';
   }
 
+  // Passing phone dialog: strictly for round control, NO mode switching mid-round.
   Future<void> showPassOptions() async {
     final choice = await showDialog<String>(
       context: context,
@@ -474,8 +639,6 @@ class _GamePageState extends State<GamePage> {
         const Positioned.fill(child: BalatroBackground()),
         Scaffold(
           backgroundColor: Colors.transparent,
-          // Everything is centred: one centred column, max width 640,
-          // centred text throughout.
           body: SafeArea(
             child: Center(
               child: ConstrainedBox(
@@ -484,6 +647,7 @@ class _GamePageState extends State<GamePage> {
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
                   child: switch (screen) {
                     Screen.home => _home(),
+                    Screen.mode => _mode(),
                     Screen.category => _category(),
                     Screen.players => _players(),
                     Screen.settings => _settings(),
@@ -567,15 +731,12 @@ class _GamePageState extends State<GamePage> {
         style: const TextStyle(color: muted, height: 1.55),
       );
 
-  // Category name is always bright yellow, never the background colour,
-  // so it stays readable on the dark cards.
   Widget _categoryLabel(String cat, {double size = 16}) => Text(
         cat,
         textAlign: TextAlign.center,
         style: TextStyle(color: yellow, fontSize: size, fontWeight: FontWeight.w800),
       );
 
-  // "1 of 5" progress while the phone is being passed around.
   Widget _passProgress() => Text(
         '${passIdx + 1} of ${players.length}',
         textAlign: TextAlign.center,
@@ -584,7 +745,7 @@ class _GamePageState extends State<GamePage> {
 
   // ---------- Screens ----------
 
-  // Main menu: text buttons only, no icons, no tip, no tagline.
+  // Main menu: text buttons only.
   Widget _home() => Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -595,10 +756,16 @@ class _GamePageState extends State<GamePage> {
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 42, fontWeight: FontWeight.w900, height: 1.05),
           ),
+          const SizedBox(height: 6),
+          const Text(
+            'The English Barra El Salfa',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: yellow, fontSize: 16, fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 22),
           _primary('Play', () {
             Sound.tap();
-            go(Screen.category);
+            go(Screen.mode);
           }),
           const SizedBox(height: 8),
           _secondary('Settings', () {
@@ -613,11 +780,109 @@ class _GamePageState extends State<GamePage> {
         ],
       );
 
-  // Page 1 of setup: pick a category. Tapping one moves straight on
-  // to the players page. No "Step 1" label.
+  // Mode Selection Screen (Accessible from Main Menu setup flow)
+  Widget _mode() => Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _title('Select Game Mode'),
+          _mutedText('Pick the game mode for your round. Add or adjust modes directly in code:'),
+          const SizedBox(height: 16),
+          ...availableGameModes.map((m) {
+            final isSelected = selectedMode.id == m.id;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: InkWell(
+                onTap: () {
+                  Sound.tap();
+                  setState(() {
+                    selectedMode = m;
+                    if (playerCount < m.minPlayers) {
+                      setPlayerCount(m.minPlayers);
+                    }
+                  });
+                  go(Screen.category);
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF1E2856) : card,
+                    border: Border.all(
+                        color: isSelected ? yellow : border,
+                        width: isSelected ? 2 : 1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(m.title,
+                              style: const TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.w900)),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: border,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              m.fraudCount > 1
+                                  ? '2 Frauds'
+                                  : m.hasUndercover
+                                      ? '1 Fraud + 1 Undercover'
+                                      : '1 Fraud',
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: yellow),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(m.subtitle,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: muted, fontSize: 14)),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${m.minPlayers} to ${m.maxPlayers} players',
+                        style: const TextStyle(
+                            color: blue,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 8),
+          _secondary('Back to main menu', () => go(Screen.home)),
+        ],
+      );
+
+  // Category Selection
   Widget _category() => Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            decoration: BoxDecoration(
+              color: card2,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: border),
+            ),
+            child: Text('Mode: ${selectedMode.title}',
+                style: const TextStyle(
+                    color: yellow, fontSize: 13, fontWeight: FontWeight.w800)),
+          ),
+          const SizedBox(height: 10),
           _title('Pick a category'),
           const SizedBox(height: 4),
           GridView.count(
@@ -662,19 +927,33 @@ class _GamePageState extends State<GamePage> {
             }).toList(),
           ),
           const SizedBox(height: 14),
+          _secondary('Change mode', () => go(Screen.mode)),
+          const SizedBox(height: 8),
           _secondary('Back to main menu', () => go(Screen.home)),
         ],
       );
 
-  // Page 2 of setup: how many players, and their names. No "Step 2" label.
+  // Players setup screen
   Widget _players() => Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _title('Players'),
           if (chosenCat != null) ...[
             _categoryLabel(chosenCat!),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
           ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            decoration: BoxDecoration(
+              color: card2,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: border),
+            ),
+            child: Text('Mode: ${selectedMode.title}',
+                style: const TextStyle(
+                    color: yellow, fontSize: 13, fontWeight: FontWeight.w800)),
+          ),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -682,7 +961,7 @@ class _GamePageState extends State<GamePage> {
                 width: 56,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: playerCount > 3
+                  onPressed: playerCount > selectedMode.minPlayers
                       ? () {
                           Sound.tap();
                           setPlayerCount(playerCount - 1);
@@ -706,7 +985,7 @@ class _GamePageState extends State<GamePage> {
                 width: 56,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: playerCount < 10
+                  onPressed: playerCount < selectedMode.maxPlayers
                       ? () {
                           Sound.tap();
                           setPlayerCount(playerCount + 1);
@@ -722,8 +1001,9 @@ class _GamePageState extends State<GamePage> {
               ),
             ],
           ),
-          const Text('3 to 10 players. Names are optional.',
-              textAlign: TextAlign.center, style: TextStyle(color: muted)),
+          const SizedBox(height: 6),
+          Text('${selectedMode.minPlayers} to ${selectedMode.maxPlayers} players. Names are optional.',
+              textAlign: TextAlign.center, style: const TextStyle(color: muted)),
           const SizedBox(height: 12),
           ...List.generate(playerCount, (i) {
             return Padding(
@@ -757,6 +1037,8 @@ class _GamePageState extends State<GamePage> {
           const SizedBox(height: 8),
           _secondary('Change category', () => go(Screen.category)),
           const SizedBox(height: 8),
+          _secondary('Change mode', () => go(Screen.mode)),
+          const SizedBox(height: 8),
           _secondary('Back to main menu', () => go(Screen.home)),
         ],
       );
@@ -774,6 +1056,7 @@ class _GamePageState extends State<GamePage> {
             title: const Text('Sound effects', textAlign: TextAlign.center),
             activeColor: yellow,
           ),
+          const SizedBox(height: 10),
           const Text('Discussion timer',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
@@ -791,7 +1074,7 @@ class _GamePageState extends State<GamePage> {
           _card(Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _mutedText('One fraud per round. Words do not repeat until a category runs out.'),
+              _mutedText('Scores are tracked across rounds using Barra El Salfa rules (100 party points per correct vote / round). Words do not repeat until a category runs out.'),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
@@ -823,18 +1106,45 @@ class _GamePageState extends State<GamePage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _title('How to Play'),
-          _mutedText('You need 3–10 players and one phone.'),
+          _mutedText('Fraud Check — The English Barra El Salfa party game.\n3–10 players and one phone.'),
+          const SizedBox(height: 10),
+          _card(Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('🎮 Game Modes',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
+              const SizedBox(height: 6),
+              const Text(
+                '• Classic (1 Fraud): Exactly one player is the fraud and only knows the category. Everyone else sees the secret word.\n\n'
+                '• Two Frauds: Two players are chosen as frauds! Neither of them knows the secret word. Double the suspicion!\n\n'
+                '• Undercover: One fraud + one undercover agent. The undercover receives a different decoy word from the same category. Both try to blend in!',
+                style: TextStyle(color: muted, height: 1.5),
+              ),
+              const SizedBox(height: 16),
+              const Text('📱 How the Round Works',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
+              const SizedBox(height: 6),
+              const Text(
+                '1. Pass the phone: Each player secretly reveals their card in private.\n\n'
+                '2. Discuss: Take turns asking smart questions and giving vague clues. Never say your secret word!\n\n'
+                '3. Vote: Every player votes privately for who they suspect is the fraud.\n\n'
+                '4. Last chance: If a fraud is caught by majority vote (> 50%), they get 4 word options. If they guess the secret word, they steal the round!',
+                style: TextStyle(color: muted, height: 1.5),
+              ),
+              const SizedBox(height: 16),
+              const Text('🏆 Barra El Salfa Scoring (+100 Party Points)',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
+              const SizedBox(height: 6),
+              const Text(
+                '• Caught Fraud misses guess: Every player who personally voted for the caught fraud earns +100 points! (Players who voted for an innocent player get 0 points).\n\n'
+                '• Fraud Escapes or Guesses Right: The fraud earns +100 points! Safe players get 0 points.\n\n'
+                '• Undercover Agent: Earns +100 points if they vote for the fraud or survive unexposed.',
+                style: TextStyle(color: muted, height: 1.5),
+              ),
+            ],
+          )),
           const SizedBox(height: 8),
-          _card(Text(
-              '1. Setup. Pick a category, then enter the players.\n\n'
-              '2. Pass the phone. Each player looks at their own card, then hides it and passes it on. Players in the know see the word and are SAFE. The fraud sees only the category.\n\n'
-              '3. Discuss. Give a clue or ask a question about the word. Never say the word itself.\n\n'
-              '4. Vote. Each player, one at a time and in private, picks someone else. The fraud is only caught if more than half of all votes are for the fraud. If not, the fraud wins the round.\n\n'
-              '5. Last chance. If the fraud was caught by a majority, the fraud picks from 4 words in the same category. Pick right and the fraud steals the round.\n\n'
-              '6. Scoring. The fraud scores alone if they win. Otherwise every player in the know scores.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: muted, height: 1.55))),
-          _primary('Start a game', () => go(Screen.category)),
+          _primary('Play now', () => go(Screen.mode)),
           const SizedBox(height: 8),
           _secondary('Back to main menu', () => go(Screen.home)),
         ],
@@ -869,7 +1179,8 @@ class _GamePageState extends State<GamePage> {
 
   Widget _reveal() {
     final idx = passOrder[passIdx];
-    final isFraud = idx == fraudIndex;
+    final isFraud = fraudIndices.contains(idx);
+    final isUndercover = idx == undercoverIndex;
     final last = passIdx == passOrder.length - 1;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -881,8 +1192,18 @@ class _GamePageState extends State<GamePage> {
           width: double.infinity,
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: isFraud ? const Color(0xFF3D1220) : const Color(0xFF12392A),
-            border: Border.all(color: isFraud ? red : green, width: 2),
+            color: isFraud
+                ? const Color(0xFF3D1220)
+                : isUndercover
+                    ? const Color(0xFF2C194D)
+                    : const Color(0xFF12392A),
+            border: Border.all(
+                color: isFraud
+                    ? red
+                    : isUndercover
+                        ? purple
+                        : green,
+                width: 2),
             borderRadius: BorderRadius.circular(18),
           ),
           child: Column(
@@ -894,20 +1215,56 @@ class _GamePageState extends State<GamePage> {
                         style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 14),
                     _categoryLabel(roundCat, size: 20),
+                    if (selectedMode.fraudCount > 1) ...[
+                      const SizedBox(height: 10),
+                      const Text(
+                        'There are 2 frauds this round! Listen closely and try to guess the secret word.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: muted, fontSize: 14),
+                      ),
+                    ],
                   ]
-                : [
-                    const Text('YOU ARE SAFE',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 32, fontWeight: FontWeight.w900, color: green)),
-                    const SizedBox(height: 14),
-                    _categoryLabel(roundCat, size: 20),
-                    const SizedBox(height: 10),
-                    Text(roundWord,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            fontSize: 38, fontWeight: FontWeight.w900, height: 1.15)),
-                  ],
+                : isUndercover
+                    ? [
+                        const Text('YOU ARE UNDERCOVER!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 30,
+                                fontWeight: FontWeight.w900,
+                                color: purple)),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'You are the secret agent! Your word is slightly different from the others. Blend in, do not get caught, and try to identify the fraud!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: muted, fontSize: 14),
+                        ),
+                        const SizedBox(height: 14),
+                        _categoryLabel(roundCat, size: 20),
+                        const SizedBox(height: 10),
+                        Text(roundUndercoverWord,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontSize: 38,
+                                fontWeight: FontWeight.w900,
+                                height: 1.15)),
+                      ]
+                    : [
+                        const Text('YOU ARE SAFE',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w900,
+                                color: green)),
+                        const SizedBox(height: 14),
+                        _categoryLabel(roundCat, size: 20),
+                        const SizedBox(height: 10),
+                        Text(roundWord,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontSize: 38,
+                                fontWeight: FontWeight.w900,
+                                height: 1.15)),
+                      ],
           ),
         ),
         const SizedBox(height: 14),
@@ -921,8 +1278,20 @@ class _GamePageState extends State<GamePage> {
         children: [
           _title('Discuss!'),
           _categoryLabel(roundCat, size: 20),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+            decoration: BoxDecoration(
+              color: card2,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: border),
+            ),
+            child: Text('Mode: ${selectedMode.title}',
+                style: const TextStyle(
+                    color: yellow, fontSize: 12, fontWeight: FontWeight.w800)),
+          ),
           const SizedBox(height: 10),
-          _mutedText('Give a clue or ask a question about the word. Do not say the word itself.'),
+          _mutedText('Give clues and ask each other questions. Do not say your secret word!'),
           if (timerMinutes > 0) ...[
             const SizedBox(height: 10),
             Text(
@@ -950,9 +1319,6 @@ class _GamePageState extends State<GamePage> {
       );
 
   Widget _vote() {
-    // Voting happens one player at a time, in private: pass the
-    // phone, tap to reveal your own voting list, pick someone
-    // else (never yourself), confirm, then pass it on.
     if (!voteRevealed) {
       final voter = players[voteIdx];
       return Column(
@@ -1038,7 +1404,7 @@ class _GamePageState extends State<GamePage> {
         children: [
           _title('Last chance!'),
           _mutedText(
-              'You caught the fraud, but they get one final guess. ${players[fraudIndex]}, pick the word you think it was. Pick right and you steal the round.'),
+              'A fraud was caught by majority vote, but they get one final guess. ${players[guessingFraudIndex]}, pick the word you think was the secret word. Guess right to steal the round!'),
           const SizedBox(height: 10),
           ...List.generate(guessOptions.length, (i) {
             final selected = guessPick == i;
@@ -1077,51 +1443,145 @@ class _GamePageState extends State<GamePage> {
       children: [
         _title(resultTitle),
         _mutedText(resultLine),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         _card(Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text('Fraud: ${players[fraudIndex]}',
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+              decoration: BoxDecoration(
+                color: card2,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: border),
+              ),
+              child: Text('Mode: ${selectedMode.title}',
+                  style: const TextStyle(
+                      color: yellow, fontSize: 12, fontWeight: FontWeight.w800)),
+            ),
+            const SizedBox(height: 10),
+            Text('Secret Word: $roundWord',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            Text('Word: $roundWord',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w800)),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
             const SizedBox(height: 4),
             _categoryLabel(roundCat),
+            const SizedBox(height: 10),
+            Text(
+              selectedMode.fraudCount > 1
+                  ? 'Frauds: ${fraudIndices.map((i) => players[i]).join(', ')}'
+                  : 'Fraud: ${fraudIndices.map((i) => players[i]).join(', ')}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w700, color: red),
+            ),
+            if (undercoverIndex != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Undercover: ${players[undercoverIndex!]} (Word: "$roundUndercoverWord")',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w700, color: purple),
+              ),
+            ],
             if (allVotes.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text('Votes for the fraud: $fraudVoteCount of ${players.length}',
+              const SizedBox(height: 14),
+              const Divider(color: border),
+              const SizedBox(height: 8),
+              const Text('Vote Summary',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 4),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              const SizedBox(height: 6),
               ...players.map((name) {
                 final idx = players.indexOf(name);
                 final count = voteCounts[idx] ?? 0;
-                return Text('$name: $count vote${count == 1 ? '' : 's'}',
+                final isFraud = fraudIndices.contains(idx);
+                final isUnder = idx == undercoverIndex;
+                final badge = isFraud
+                    ? ' [Fraud]'
+                    : isUnder
+                        ? ' [Undercover]'
+                        : '';
+                return Text('$name$badge: $count vote${count == 1 ? '' : 's'}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: muted));
+                    style: TextStyle(
+                        color: count > (players.length / 2) ? red : muted,
+                        fontWeight: count > (players.length / 2)
+                            ? FontWeight.w700
+                            : FontWeight.normal));
+              }),
+              const SizedBox(height: 12),
+              const Divider(color: border),
+              const SizedBox(height: 8),
+              const Text('Barra El Salfa Points This Round',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              const SizedBox(height: 6),
+              ...List.generate(players.length, (i) {
+                final pts = pointsEarnedThisRound[i] ?? 0;
+                final voterTarget = playerVotes[i];
+                String reason = '';
+                if (pts > 0) {
+                  if (fraudIndices.contains(i)) {
+                    reason = fraudGuessedCorrectly ? 'Guessed the word!' : 'Escaped undetected!';
+                  } else if (i == undercoverIndex) {
+                    reason = 'Survived undercover!';
+                  } else if (voterTarget != null && caughtFrauds.contains(voterTarget)) {
+                    reason = 'Correctly voted for ${players[voterTarget]}';
+                  } else {
+                    reason = 'Round bonus';
+                  }
+                } else {
+                  if (fraudIndices.contains(i)) {
+                    reason = 'Caught & missed guess';
+                  } else if (voterTarget != null) {
+                    reason = 'Voted for ${players[voterTarget]}';
+                  } else {
+                    reason = 'No points';
+                  }
+                }
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '${players[i]} ($reason)',
+                          style: TextStyle(
+                              color: pts > 0 ? ink : muted,
+                              fontSize: 13,
+                              fontWeight: pts > 0 ? FontWeight.w700 : FontWeight.normal),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        pts > 0 ? '+$pts pts' : '0 pts',
+                        style: TextStyle(
+                            color: pts > 0 ? green : muted,
+                            fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                );
               }),
             ],
           ],
         )),
-        const SizedBox(height: 8),
-        const Text('Scores',
+        const SizedBox(height: 12),
+        const Text('Total Leaderboard',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 6),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
         ...sorted.map((e) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(e.key, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  Text('${e.value}'),
+                  Text(e.key, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  Text('${e.value} pts',
+                      style: const TextStyle(
+                          color: yellow, fontWeight: FontWeight.w800, fontSize: 16)),
                 ],
               ),
             )),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         _primary('Start a new round', () {
           Sound.start();
           startRound();
