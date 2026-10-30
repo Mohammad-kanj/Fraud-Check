@@ -4,17 +4,38 @@ A genuine mobile app version of Fraud Check (the English برا السالفة g
 One phone, 3–10 players, one fraud per round. No login, no internet,
 no account needed to play.
 
-## What changed from the web version
+## What is in this version (v1.1.0)
 
+- **Centred layout:** every screen is centred, with centred headings,
+  text, and buttons.
 - **Main menu:** text buttons only (Play / Settings / How to Play).
   No menu icons, no tip at the bottom, no tagline.
-- **Reveal cards, trimmed:** the fraud card shows only
-  "YOU ARE THE FRAUD!" plus the category. The in-the-know card shows
-  only the category and the word — no role label, because if you can
-  see a word, you are in.
+- **Setup is two pages:** first pick a category, then a separate
+  players page for the player count (3–10) and names. No "Step 1" /
+  "Step 2" labels.
+- **Passing the phone:** each pass card shows progress like "1 of 5".
+  A three-dot options menu in the top right while passing offers:
+  Restart round, Change category, Change players, Back to main menu.
+- **Reveal cards:** the fraud card shows "YOU ARE THE FRAUD!" plus
+  the category. A player in the know sees "YOU ARE SAFE", then the
+  category and the word.
 - **Categories:** the category name is always bright yellow
   (#FFD23F) on the dark background, so it never blends into the card.
-  Category icons are still shown on the Play screen only.
+  Category icons are still shown on the category page only.
+- **Sound effects:** short generated sounds for tapping, starting a
+  round, revealing a card, voting, guessing, winning, and losing.
+  They live in `assets/sounds/` and can be switched off in Settings.
+  If a sound fails, the game still works.
+- **Launcher icon:** the icon you see on the phone's home screen is
+  now the app's own logo (`assets/launcher_icon.png`, full-bleed navy
+  so there are no white corners), not the default Flutter icon. The
+  GitHub workflow and the computer build both run
+  `dart run flutter_launcher_icons` to generate it.
+- **Background:** a Balatro-style animated background behind every
+  screen — slow swirling blobs in deep red, teal, gold, and purple,
+  with wavy rings rippling out from the centre, kept dark so text
+  stays readable. It is drawn with plain CustomPaint, so the build
+  needs no shader files.
 - **Logo:** the user's own supplied logo — faceless silhouette with
   dark hair, high-collared coat with white and gold outline, gold
   magnifying glass, navy background. (Supplied 2026-10-29 as
@@ -24,13 +45,24 @@ no account needed to play.
 
 ## How it plays
 
-1. Pick one category, set the player count (3–10), edit names if you like.
-2. Pass the phone. Each player taps to reveal their own card, then hides it.
-3. Discuss without saying the word, then vote for the fraud.
-4. If the vote is right, the fraud gets 4 words from the same category
-   to guess from. A right guess steals the round.
-5. Scores are tracked for the session. Words do not repeat until a
+1. Pick one category, then set the player count (3–10) and edit names
+   if you like.
+2. Pass the phone. Each player taps to reveal their own card, then
+   hides it. Players in the know are SAFE; the fraud sees only the
+   category.
+3. Discuss without saying the word.
+4. Vote: every player, one at a time and in private, picks someone
+   else. The fraud is only caught if MORE THAN HALF of all votes are
+   for the fraud. If not, the fraud wins the round. The result screen
+   shows the vote tally.
+5. Last chance: if the fraud was caught by a majority, the fraud gets
+   4 words from the same category to guess from. A right guess steals
+   the round.
+6. Scores are tracked for the session. Words do not repeat until a
    category runs out.
+7. At the end of a round, only two buttons remain: "Start a new round"
+   and "Return to main menu". Clearing scores is still available in
+   Settings ("Reset scores and used words").
 
 ## Getting it onto your phone
 
@@ -62,6 +94,7 @@ cp -r assets app/assets
 cp pubspec.yaml app/pubspec.yaml
 cd app
 flutter pub get
+dart run flutter_launcher_icons
 flutter build apk --release
 ```
 
@@ -73,7 +106,9 @@ Copy it to your phone and open it to install.
 You never have to rebuild the app from scratch or redo the whole
 process. Change only what you want changed, then build again:
 
-- Logo only: replace `assets/logo.png`.
+- Logo only: replace `assets/logo.png` AND `assets/launcher_icon.png`
+  with the new logo (the second one is the home-screen icon).
+- Sounds only: replace a file in `assets/sounds/`.
 - Wording, rules, screens, or scoring: edit `lib/main.dart`.
 - Words or categories: edit `lib/categories.dart`.
 
@@ -86,12 +121,19 @@ Then, using the same repo/project as before:
   phone ever refuses to install over the old version, uninstall the
   old one first and then install the new one.
 - **Computer route:** copy the changed file(s) into the `app/` folder
-  again and run `flutter build apk --release` again.
+  again, run `dart run flutter_launcher_icons` if the logo changed,
+  and run `flutter build apk --release` again.
 
 ## Files in this folder
 
-- `lib/main.dart` — the whole game (screens, rounds, voting, scoring).
+- `lib/main.dart` — the whole game (screens, rounds, voting, scoring,
+  sounds, background).
 - `lib/categories.dart` — the 20 categories, word lists, and category icons.
-- `assets/logo.png` — the new logo, also used on the main menu.
-- `pubspec.yaml` — app name, version, and the logo asset.
-- `.github/workflows/build-apk.yml` — builds the APK automatically.
+- `assets/logo.png` — the logo, shown on the main menu.
+- `assets/launcher_icon.png` — the logo, used as the home-screen icon.
+- `assets/sounds/` — the sound effects (tap, start, reveal, vote,
+  guess, win, lose).
+- `pubspec.yaml` — app name, version, assets, and the launcher-icon
+  setup.
+- `.github/workflows/build-apk.yml` — builds the APK automatically,
+  including the launcher icon.

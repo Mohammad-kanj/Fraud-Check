@@ -1,7 +1,7 @@
 name: fraud_check
 description: "Fraud Check — a pass-and-play party game. One player is the fraud."
 publish_to: "none"
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -9,12 +9,28 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  audioplayers: ^6.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
+    - assets/launcher_icon.png
+    - assets/sounds/tap.wav
+    - assets/sounds/start.wav
+    - assets/sounds/reveal.wav
+    - assets/sounds/vote.wav
+    - assets/sounds/guess.wav
+    - assets/sounds/win.wav
+    - assets/sounds/lose.wav
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/launcher_icon.png"
+  min_sdk_android: 21
