@@ -23,10 +23,14 @@ jobs:
           cp lib/main.dart lib/categories.dart app/lib/
           cp -r assets app/assets
           cp pubspec.yaml app/pubspec.yaml
-      - name: Build release APK
+      - name: Generate the launcher icon from the app logo
         run: |
           cd app
           flutter pub get
+          dart run flutter_launcher_icons
+      - name: Build release APK
+        run: |
+          cd app
           flutter build apk --release
       - name: Upload APK
         uses: actions/upload-artifact@v4
