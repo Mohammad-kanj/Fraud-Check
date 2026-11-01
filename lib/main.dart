@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'categories.dart';
 
@@ -13,17 +14,18 @@ import 'categories.dart';
 // No login, no internet, no storage: scores and used words live only for this session.
 
 // ---------- Colours ----------
-const bg = Color(0xFF0F1226);
-const card = Color(0xFF1B2044);
-const card2 = Color(0xFF232A5C);
-const border = Color(0xFF3A4390);
-const ink = Color(0xFFF4F5FF);
-const muted = Color(0xFFB8BDE3);
-const yellow = Color(0xFFFFD23F);
-const green = Color(0xFF3DDC84);
-const red = Color(0xFFFF5D73);
-const blue = Color(0xFF5AA9FF);
-const purple = Color(0xFFB066FF);
+const bg = Color(0xFF0A0D1B);
+const card = Color(0xFF151932);
+const card2 = Color(0xFF1E2448);
+const cardHi = card2;
+const border = Color(0xFF2C3466);
+const yellow = Color(0xFFFFC837);
+const red = Color(0xFFFF3B5C);
+const green = Color(0xFF00E5A3);
+const blue = Color(0xFF3A86FF);
+const ink = Color(0xFFF8FAFC);
+const muted = Color(0xFF94A3B8);
+const purple = Color(0xFF8B5CF6);
 
 // Barra El Salfa party points
 const int roundPoints = 100;
@@ -137,30 +139,34 @@ class FraudCheckApp extends StatelessWidget {
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: bg,
         colorScheme: const ColorScheme.dark(primary: yellow, surface: card),
-        textTheme: ThemeData.dark().textTheme.apply(bodyColor: ink, displayColor: ink),
+        textTheme: GoogleFonts.archivoTextTheme(
+          ThemeData.dark().textTheme.apply(bodyColor: ink, displayColor: ink),
+        ),
       ),
       home: const GamePage(),
     );
   }
 }
 
-// ---------- Balatro-style background ----------
-class BalatroBackground extends StatefulWidget {
-  const BalatroBackground({super.key});
+// ---------- Film Strip Background ----------
+class FilmStripBackground extends StatefulWidget {
+  const FilmStripBackground({super.key});
 
   @override
-  State<BalatroBackground> createState() => _BalatroBackgroundState();
+  State<FilmStripBackground> createState() => _FilmStripBackgroundState();
 }
 
-class _BalatroBackgroundState extends State<BalatroBackground>
+class _FilmStripBackgroundState extends State<FilmStripBackground>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 24))
-      ..repeat();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 40),
+    )..repeat();
   }
 
   @override
@@ -174,111 +180,154 @@ class _BalatroBackgroundState extends State<BalatroBackground>
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (context, _) => CustomPaint(
-        painter: _BalatroPainter(t: _ctrl.value * 2 * pi),
+        painter: FilmStripPainter(progress: _ctrl.value),
       ),
     );
   }
 }
 
-class _BalatroPainter extends CustomPainter {
-  final double t;
-  _BalatroPainter({required this.t});
+class FilmStripPainter extends CustomPainter {
+  final double progress;
+  FilmStripPainter({required this.progress});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final bgPaint = Paint()..color = const Color(0xFF0A0C1C);
-    canvas.drawRect(Offset.zero & size, bgPaint);
+    // Deep midnight navy base fill
+    final basePaint = Paint()..color = const Color(0xFF090B16);
+    canvas.drawRect(Offset.zero & size, basePaint);
 
     final cx = size.width / 2;
     final cy = size.height / 2;
-    final minDim = min(size.width, size.height);
+    final diagonal = sqrt(size.width * size.width + size.height * size.height);
 
-    final blobs = [
-      _Blob(
-        color: const Color(0xFF8B1E3F),
-        radius: minDim * 0.55,
-        dist: minDim * 0.35,
-        speed: 1.0,
-        phase: 0.0,
-      ),
-      _Blob(
-        color: const Color(0xFF0F5B66),
-        radius: minDim * 0.50,
-        dist: minDim * 0.30,
-        speed: -0.7,
-        phase: 2.1,
-      ),
-      _Blob(
-        color: const Color(0xFF8C6D1F),
-        radius: minDim * 0.45,
-        dist: minDim * 0.40,
-        speed: 0.5,
-        phase: 4.2,
-      ),
-      _Blob(
-        color: const Color(0xFF4B2375),
-        radius: minDim * 0.60,
-        dist: minDim * 0.25,
-        speed: -1.2,
-        phase: 1.3,
-      ),
-    ];
+    canvas.save();
+    canvas.translate(cx, cy);
+    canvas.rotate(-pi / 4); // 45-degree angle tilt
 
-    for (final b in blobs) {
-      final angle = t * b.speed + b.phase;
-      final bx = cx + cos(angle) * b.dist;
-      final by = cy + sin(angle) * b.dist;
-      final paint = Paint()
-        ..color = b.color.withValues(alpha: 0.38)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, b.radius * 0.45);
-      canvas.drawCircle(Offset(bx, by), b.radius, paint);
-    }
+    const double stripHeight = 62.0;
+    const double stripGap = 42.0;
+    const double pitch = stripHeight + stripGap;
+    const double frameWidth = 58.0;
+    const double sprocketSpacing = 14.0;
+    const double sprocketW = 5.0;
+    const double sprocketH = 7.0;
 
-    final wavePaint = Paint()
-      ..color = const Color(0xFF5AA9FF).withValues(alpha: 0.04)
+    final double animOffset = progress * frameWidth;
+
+    final stripPaint = Paint()..color = const Color(0xFF13172E);
+    final borderPaint = Paint()
+      ..color = const Color(0xFF232A52).withValues(alpha: 0.6)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+      ..strokeWidth = 1.0;
+    final frameLinePaint = Paint()
+      ..color = const Color(0xFF1D2344)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    final sprocketPaint = Paint()..color = const Color(0xFF090B16);
 
-    for (var ring = 1; ring <= 6; ring++) {
-      final baseR = ring * (minDim * 0.11);
-      final path = Path();
-      const steps = 60;
-      for (var i = 0; i <= steps; i++) {
-        final a = (i / steps) * 2 * pi;
-        final wave = sin(a * 4 + t * 2 + ring) * (minDim * 0.015) +
-            cos(a * 2 - t + ring) * (minDim * 0.01);
-        final r = baseR + wave;
-        final px = cx + cos(a) * r;
-        final py = cy + sin(a) * r;
-        if (i == 0) {
-          path.moveTo(px, py);
-        } else {
-          path.lineTo(px, py);
-        }
+    final textStyle = TextStyle(
+      color: const Color(0xFFFFD15C).withValues(alpha: 0.45),
+      fontSize: 26,
+      fontWeight: FontWeight.w900,
+      fontFamily: GoogleFonts.archivo().fontFamily,
+    );
+    final textPainter = TextPainter(
+      text: TextSpan(text: '?', style: textStyle),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    final int numStrips = (diagonal / pitch).ceil() + 2;
+
+    for (int s = -numStrips; s <= numStrips; s++) {
+      final double top = s * pitch;
+      final double bottom = top + stripHeight;
+      final stripRect = Rect.fromLTRB(-diagonal, top, diagonal, bottom);
+
+      // 1. Film strip dark ribbon
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(stripRect, const Radius.circular(2)),
+        stripPaint,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(stripRect, const Radius.circular(2)),
+        borderPaint,
+      );
+
+      // Top and bottom rail divider lines
+      final railLinePaint = Paint()
+        ..color = const Color(0xFF222950).withValues(alpha: 0.8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8;
+      canvas.drawLine(
+        Offset(-diagonal, top + 11),
+        Offset(diagonal, top + 11),
+        railLinePaint,
+      );
+      canvas.drawLine(
+        Offset(-diagonal, bottom - 11),
+        Offset(diagonal, bottom - 11),
+        railLinePaint,
+      );
+
+      // 2. Sprocket perforations on top and bottom rails
+      final double sprocketStart = -diagonal - (animOffset % sprocketSpacing);
+      for (double x = sprocketStart; x <= diagonal; x += sprocketSpacing) {
+        // Top sprocket
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(x, top + 2.5, sprocketW, sprocketH),
+            const Radius.circular(1.5),
+          ),
+          sprocketPaint,
+        );
+        // Bottom sprocket
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(x, bottom - 9.5, sprocketW, sprocketH),
+            const Radius.circular(1.5),
+          ),
+          sprocketPaint,
+        );
       }
-      path.close();
-      canvas.drawPath(path, wavePaint);
+
+      // 3. Frames and Question Marks
+      final double frameStart = -diagonal - (animOffset % frameWidth);
+      for (double x = frameStart; x <= diagonal; x += frameWidth) {
+        // Frame divider
+        canvas.drawLine(
+          Offset(x, top + 11),
+          Offset(x, bottom - 11),
+          frameLinePaint,
+        );
+
+        // Center question mark in frame
+        final qx = x + (frameWidth - textPainter.width) / 2;
+        final qy = top + 12 + ((stripHeight - 24) - textPainter.height) / 2;
+        textPainter.paint(canvas, Offset(qx, qy));
+      }
     }
+
+    canvas.restore();
+
+    // Subtle edge vignette overlay
+    final vignettePaint = Paint()
+      ..shader = RadialGradient(
+        center: Alignment.center,
+        radius: 1.1,
+        colors: [
+          Colors.transparent,
+          const Color(0xFF070913).withValues(alpha: 0.75),
+        ],
+        stops: const [0.55, 1.0],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, vignettePaint);
   }
 
   @override
-  bool shouldRepaint(_BalatroPainter oldDelegate) => oldDelegate.t != t;
+  bool shouldRepaint(FilmStripPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
-class _Blob {
-  final Color color;
-  final double radius;
-  final double dist;
-  final double speed;
-  final double phase;
-  _Blob({
-    required this.color,
-    required this.radius,
-    required this.dist,
-    required this.speed,
-    required this.phase,
-  });
-}
 
 // ---------- Main Game Widget ----------
 class GamePage extends StatefulWidget {
@@ -322,6 +371,11 @@ class _GamePageState extends State<GamePage> {
   int? guessPick;
   Timer? timer;
   int secondsLeft = 0;
+
+  // Questioning rounds (Feature F14 / Requirement R5)
+  int questionTurnIdx = 0;
+  List<int> questionAskers = [];
+  List<int> questionTargets = [];
 
   // Points awarded this round (Barra El Salfa rule tracking)
   Map<int, int> pointsEarnedThisRound = {};
@@ -419,6 +473,9 @@ class _GamePageState extends State<GamePage> {
       for (final p in players) {
         scores.putIfAbsent(p, () => 0);
       }
+      questionTurnIdx = 0;
+      questionAskers = [];
+      questionTargets = [];
       screen = Screen.pass;
     });
   }
@@ -446,7 +503,12 @@ class _GamePageState extends State<GamePage> {
 
   void startDiscussion() {
     timer?.cancel();
+    final rng = Random();
+    final order = List.generate(players.length, (i) => i)..shuffle(rng);
     setState(() {
+      questionTurnIdx = 0;
+      questionAskers = List<int>.from(order);
+      questionTargets = List.generate(players.length, (i) => order[(i + 1) % players.length]);
       secondsLeft = timerMinutes * 60;
       screen = Screen.discuss;
     });
@@ -462,6 +524,7 @@ class _GamePageState extends State<GamePage> {
   }
 
   void startVoting() {
+    timer?.cancel();
     setState(() {
       voteIdx = 0;
       voteRevealed = false;
@@ -728,7 +791,7 @@ class _GamePageState extends State<GamePage> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        const Positioned.fill(child: BalatroBackground()),
+        const Positioned.fill(child: FilmStripBackground()),
         Scaffold(
           backgroundColor: Colors.transparent,
           body: SafeArea(
@@ -766,48 +829,32 @@ class _GamePageState extends State<GamePage> {
         child: Stack(
           alignment: Alignment.center,
           children: [
+            // Soft party glow behind cutout
             Container(
-              width: size * 0.95,
-              height: size * 0.95,
+              width: size * 0.85,
+              height: size * 0.85,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: yellow.withValues(alpha: 0.28),
+                    color: yellow.withValues(alpha: 0.30),
                     blurRadius: 40,
-                    spreadRadius: 6,
+                    spreadRadius: 8,
                   ),
                   BoxShadow(
-                    color: blue.withValues(alpha: 0.22),
+                    color: blue.withValues(alpha: 0.20),
                     blurRadius: 55,
                     spreadRadius: 14,
                   ),
                 ],
               ),
             ),
-            ShaderMask(
-              shaderCallback: (Rect bounds) {
-                return const RadialGradient(
-                  center: Alignment.center,
-                  radius: 0.65,
-                  colors: [
-                    Colors.black,
-                    Colors.black,
-                    Colors.transparent,
-                  ],
-                  stops: [0.0, 0.72, 1.0],
-                ).createShader(bounds);
-              },
-              blendMode: BlendMode.dstIn,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(32),
-                child: Image.asset(
-                  'assets/logo.png',
-                  width: size,
-                  height: size,
-                  fit: BoxFit.cover,
-                ),
-              ),
+            Image.asset(
+              'assets/logo.png',
+              width: size,
+              height: size,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
             ),
           ],
         ),
@@ -825,6 +872,67 @@ class _GamePageState extends State<GamePage> {
             textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           child: Text(label, textAlign: TextAlign.center),
+        ),
+      );
+
+  Widget _primaryWithIcon(String label, IconData icon, VoidCallback? onPressed) => SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: yellow,
+            foregroundColor: const Color(0xFF1A1400),
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 3,
+            textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 28),
+                const SizedBox(width: 8),
+                Text(label, textAlign: TextAlign.center),
+              ],
+            ),
+          ),
+        ),
+      );
+
+  Widget _actionCardButton(String label, IconData icon, VoidCallback onPressed) => Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+            decoration: BoxDecoration(
+              color: card2,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: border, width: 1.5),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 22, color: yellow),
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: ink,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       );
 
@@ -875,46 +983,66 @@ class _GamePageState extends State<GamePage> {
         style: TextStyle(color: yellow, fontSize: size, fontWeight: FontWeight.w800),
       );
 
-  Widget _passProgress() => Text(
-        '${passIdx + 1} of ${players.length}',
-        textAlign: TextAlign.center,
-        style: const TextStyle(color: muted, fontSize: 16, fontWeight: FontWeight.w700),
-      );
-
   // ---------- Screens ----------
 
-  // Main menu: text buttons only.
+  // Main menu: Barra El Salfa party hero branding
   Widget _home() => Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _logo(),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           const Text(
             'FRAUD CHECK',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 42, fontWeight: FontWeight.w900, height: 1.05),
+            style: TextStyle(
+              fontSize: 44,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.2,
+              height: 1.05,
+            ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'The English Barra El Salfa',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: yellow, fontSize: 16, fontWeight: FontWeight.w700),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            decoration: BoxDecoration(
+              color: yellow.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: yellow.withValues(alpha: 0.5)),
+            ),
+            child: const Text(
+              'WHO IS THE IMPOSTER?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: yellow,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.5,
+              ),
+            ),
           ),
-          const SizedBox(height: 22),
-          _primary('Play', () {
+          const SizedBox(height: 32),
+          _primaryWithIcon('Play', Icons.play_arrow_rounded, () {
             Sound.tap();
             go(Screen.mode);
           }),
-          const SizedBox(height: 8),
-          _secondary('Settings', () {
-            Sound.tap();
-            go(Screen.settings);
-          }),
-          const SizedBox(height: 8),
-          _secondary('Rules', () {
-            Sound.tap();
-            go(Screen.rules);
-          }),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _actionCardButton('Settings', Icons.settings_rounded, () {
+                  Sound.tap();
+                  go(Screen.settings);
+                }),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _actionCardButton('Rules', Icons.menu_book_rounded, () {
+                  Sound.tap();
+                  go(Screen.rules);
+                }),
+              ),
+            ],
+          ),
         ],
       );
 
@@ -1009,27 +1137,49 @@ class _GamePageState extends State<GamePage> {
   Widget _category() => Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-            decoration: BoxDecoration(
-              color: card2,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: border),
-            ),
-            child: Text('Mode: ${selectedMode.title}',
-                style: const TextStyle(
-                    color: yellow, fontSize: 13, fontWeight: FontWeight.w800)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                decoration: BoxDecoration(
+                  color: card2,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: border),
+                ),
+                child: Text('Mode: ${selectedMode.title}',
+                    style: const TextStyle(
+                        color: yellow, fontSize: 13, fontWeight: FontWeight.w800)),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: card2,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: border),
+                ),
+                child: Text(
+                  '${categories.length} Categories',
+                  style: const TextStyle(
+                    color: muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           _title('Pick a category'),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-            childAspectRatio: 1.45,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 1.25,
             children: categories.keys.map((cat) {
               final selected = chosenCat == cat;
               return InkWell(
@@ -1038,33 +1188,91 @@ class _GamePageState extends State<GamePage> {
                   setState(() => chosenCat = cat);
                   go(Screen.players);
                 },
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: selected ? const Color(0xFF2F6B4F) : const Color(0xFF12153A),
-                    border: Border.all(color: selected ? green : border),
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: selected
+                          ? [const Color(0xFF233554), const Color(0xFF1B2844)]
+                          : [const Color(0xFF1E244E), const Color(0xFF151838)],
+                    ),
+                    border: Border.all(
+                      color: selected ? yellow : border,
+                      width: selected ? 2.2 : 1.2,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: selected
+                        ? [
+                            BoxShadow(
+                              color: yellow.withValues(alpha: 0.25),
+                              blurRadius: 10,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Stack(
                     children: [
-                      Text(categoryIcons[cat] ?? '🎭',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 28)),
-                      const SizedBox(height: 4),
-                      _categoryLabel(cat),
-                      Text('${categories[cat]!.length} words${selected ? ' ✓' : ''}',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: muted, fontSize: 12)),
+                      if (selected)
+                        const Positioned(
+                          top: 0,
+                          right: 0,
+                          child: Icon(
+                            Icons.check_circle_rounded,
+                            color: yellow,
+                            size: 20,
+                          ),
+                        ),
+                      Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF252D60),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                categoryIcons[cat] ?? '🎭',
+                                style: const TextStyle(fontSize: 26),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            _categoryLabel(cat, size: 15),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: card2.withValues(alpha: 0.8),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '🏷️ ${categories[cat]!.length} words',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: muted,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
               );
             }).toList(),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           _secondary('Change mode', () => go(Screen.mode)),
           const SizedBox(height: 8),
           _secondary('Back to main menu', () => go(Screen.home)),
@@ -1098,57 +1306,86 @@ class _GamePageState extends State<GamePage> {
             style: const TextStyle(color: muted, fontSize: 14),
           ),
           const SizedBox(height: 16),
+          // Player rows
           ...List.generate(playerCount, (i) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: card,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: border, width: 1.5),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: card2,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: border),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          '${i + 1}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800, color: yellow, fontSize: 15),
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: border, width: 1.5),
+                ),
+                child: Row(
+                  children: [
+                    // Number Badge
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: card2,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: border),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${i + 1}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: yellow,
+                          fontSize: 15,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          key: ValueKey('player-$i-$playerCount'),
-                          controller: TextEditingController(text: players[i])
-                            ..selection = TextSelection.collapsed(offset: players[i].length),
-                          onChanged: (v) {
-                            players[i] = v.trim().isEmpty ? 'Player ${i + 1}' : v.trim();
-                          },
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                          decoration: InputDecoration(
-                            hintText: 'Player ${i + 1}',
-                            hintStyle: const TextStyle(color: muted),
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
+                    ),
+                    const SizedBox(width: 14),
+                    // Player Name Input Field
+                    Expanded(
+                      child: TextField(
+                        key: ValueKey('player-$i-$playerCount'),
+                        controller: TextEditingController(text: players[i])
+                          ..selection = TextSelection.collapsed(offset: players[i].length),
+                        onChanged: (v) {
+                          players[i] = v.trim().isEmpty ? 'Player ${i + 1}' : v.trim();
+                        },
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        decoration: InputDecoration(
+                          hintText: 'Player ${i + 1}',
+                          hintStyle: const TextStyle(color: muted),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      IconButton(
+                    ),
+                    // Distinct visual and touch gap: 16px gap + 1.5px divider + 12px gap
+                    const SizedBox(width: 16),
+                    Container(
+                      width: 1.5,
+                      height: 26,
+                      color: border.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 12),
+                    // Standalone 38px circular container for delete button
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: playerCount > selectedMode.minPlayers
+                            ? red.withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: playerCount > selectedMode.minPlayers
+                              ? red.withValues(alpha: 0.3)
+                              : border.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
                         icon: Icon(
                           Icons.remove_circle_outline_rounded,
+                          size: 20,
                           color: playerCount > selectedMode.minPlayers
                               ? red
                               : muted.withValues(alpha: 0.3),
@@ -1158,47 +1395,45 @@ class _GamePageState extends State<GamePage> {
                             ? () => removePlayerAt(i)
                             : null,
                       ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+          // Single "Add player" button strictly once below the final player
+          if (playerCount < selectedMode.maxPlayers)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 16),
+              child: InkWell(
+                onTap: () => addPlayerAfter(playerCount - 1),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: card2.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: border, width: 1.5),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_circle_outline_rounded, size: 20, color: yellow),
+                      SizedBox(width: 8),
+                      Text(
+                        'Add player',
+                        style: TextStyle(
+                          color: ink,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                if (playerCount < selectedMode.maxPlayers)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6, bottom: 12),
-                    child: Center(
-                      child: InkWell(
-                        onTap: () => addPlayerAfter(i),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: card2,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: border),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.add_circle_outline_rounded, size: 18, color: yellow),
-                              SizedBox(width: 6),
-                              Text(
-                                'Add player',
-                                style: TextStyle(
-                                  color: ink,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  const SizedBox(height: 12),
-              ],
-            );
-          }),
+              ),
+            ),
           const SizedBox(height: 12),
           _primary('Start round', chosenCat == null
               ? null
@@ -1215,63 +1450,220 @@ class _GamePageState extends State<GamePage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _title('Settings'),
-          SwitchListTile(
-            value: Sound.enabled,
-            onChanged: (v) {
-              setState(() => Sound.enabled = v);
-              if (v) Sound.tap();
-            },
-            title: const Text('Sound effects', textAlign: TextAlign.center),
-            activeThumbColor: yellow,
-          ),
-          const SizedBox(height: 10),
-          const Text('Discussion timer',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
-          RadioGroup<int>(
-            groupValue: timerMinutes,
-            onChanged: (v) => setState(() => timerMinutes = v ?? 0),
-            child: Column(
-              children: [0, 2, 3, 5]
-                  .map((m) => RadioListTile<int>(
-                        value: m,
-                        title: Text(m == 0 ? 'No timer' : '$m minutes',
-                            textAlign: TextAlign.center),
-                        activeColor: yellow,
-                      ))
-                  .toList(),
+          const SizedBox(height: 8),
+
+          // Card 1: Sound effects card
+          _card(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: card2,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.volume_up_rounded, color: yellow, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Audio Feedback',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: ink,
+                            ),
+                          ),
+                          Text(
+                            'Playful arcade sound effects during gameplay',
+                            style: TextStyle(color: muted, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Material(
+                  color: Colors.transparent,
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: Sound.enabled,
+                    onChanged: (v) {
+                      setState(() => Sound.enabled = v);
+                      if (v) Sound.tap();
+                    },
+                    title: const Text(
+                      'Sound effects',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    ),
+                    activeThumbColor: yellow,
+                  ),
+                ),
+              ],
             ),
           ),
-          _mutedText('The timer is only a guide. You can vote early at any time.'),
-          const SizedBox(height: 14),
-          _card(Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _mutedText('Scores are tracked across rounds using Barra El Salfa rules (100 party points per correct vote / round). Words do not repeat until a category runs out.'),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      scores.clear();
-                      usedWords.clear();
-                      for (final p in players) {
-                        scores[p] = 0;
-                      }
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Scores and used words cleared.')));
-                  },
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: red, foregroundColor: Colors.white),
-                  child: const Text('Reset scores and used words'),
+
+          // Card 2: Discussion timer card
+          _card(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: card2,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.timer_rounded, color: yellow, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Discussion timer',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: ink,
+                          ),
+                        ),
+                        Text(
+                          'Time limit for questioning phase',
+                          style: TextStyle(color: muted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          )),
-          const SizedBox(height: 8),
+                const SizedBox(height: 14),
+                // Segmented interactive pills (Off/No timer, 2 min, 3 min, 5 min)
+                Row(
+                  children: [
+                    for (final item in [(0, 'No timer'), (2, '2 min'), (3, '3 min'), (5, '5 min')])
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: InkWell(
+                            onTap: () {
+                              Sound.tap();
+                              setState(() => timerMinutes = item.$1);
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: timerMinutes == item.$1 ? yellow : card2,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: timerMinutes == item.$1 ? yellow : border,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Text(
+                                item.$2,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: timerMinutes == item.$1
+                                      ? const Color(0xFF1A1400)
+                                      : ink,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _mutedText('The timer is only a guide. You can vote early at any time.'),
+              ],
+            ),
+          ),
+
+          // Card 3: Session data card
+          _card(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: card2,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.emoji_events_rounded, color: yellow, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Session Data',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: ink,
+                          ),
+                        ),
+                        Text(
+                          'Scoreboard & word history',
+                          style: TextStyle(color: muted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _mutedText(
+                  'Scores are tracked across rounds using Barra El Salfa rules (100 party points per correct vote / round). Words do not repeat until a category runs out.',
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: const Text('Reset scores and used words'),
+                    onPressed: () {
+                      setState(() {
+                        scores.clear();
+                        usedWords.clear();
+                        for (final p in players) {
+                          scores[p] = 0;
+                        }
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Scores and used words cleared.')),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
           _secondary('Back to main menu', () => go(Screen.home)),
         ],
       );
@@ -1330,23 +1722,87 @@ class _GamePageState extends State<GamePage> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         passTopBar(),
-        _card(Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Text('Pass the phone',
+        const SizedBox(height: 10),
+        _card(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Mystery badge
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: card2,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: yellow.withValues(alpha: 0.5), width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: yellow.withValues(alpha: 0.2),
+                      blurRadius: 16,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.lock_person_rounded,
+                  color: yellow,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Pass the phone',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 8),
-            _mutedText('No peeking! Only the person holding the phone should look.'),
-            const SizedBox(height: 16),
-            Text(name,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 8),
-            _passProgress(),
-          ],
-        )),
-        _primary('Tap to reveal', showReveal),
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+              ),
+              const SizedBox(height: 6),
+              _mutedText('No peeking! Only the person holding the phone should look.'),
+              const SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: card2,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: border),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      name,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        color: ink,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: yellow.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Player ${passIdx + 1} of ${players.length}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: yellow,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _primaryWithIcon('Tap to reveal', Icons.visibility_rounded, showReveal),
       ],
     );
   }
@@ -1386,265 +1842,12 @@ class _GamePageState extends State<GamePage> {
       children: [
         passTopBar(),
         const SizedBox(height: 10),
-        TweenAnimationBuilder<double>(
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOutBack,
-          tween: Tween<double>(begin: 0.88, end: 1.0),
-          builder: (context, scale, child) {
-            return Transform.scale(
-              scale: scale,
-              child: child,
-            );
-          },
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 26),
-            decoration: BoxDecoration(
-              gradient: bgGradient,
-              border: Border.all(color: themeColor, width: 2.5),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: themeColor.withValues(alpha: 0.42),
-                  blurRadius: 32,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isFraud
-                        ? const Color(0xFF63152A)
-                        : isUndercover
-                            ? const Color(0xFF471F7A)
-                            : const Color(0xFF165236),
-                    border: Border.all(color: themeColor, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: themeColor.withValues(alpha: 0.5),
-                        blurRadius: 16,
-                      ),
-                    ],
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    isFraud
-                        ? Icons.theater_comedy_rounded
-                        : isUndercover
-                            ? Icons.visibility_off_rounded
-                            : Icons.shield_rounded,
-                    color: Colors.white,
-                    size: 36,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: themeColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: themeColor),
-                  ),
-                  child: Text(
-                    isFraud
-                        ? '🎭 IMPOSTER'
-                        : isUndercover
-                            ? '🕵️ UNDERCOVER AGENT'
-                            : '🛡️ INNOCENT / SAFE',
-                    style: TextStyle(
-                      color: themeColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.1,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  isFraud
-                      ? 'YOU ARE THE FRAUD!'
-                      : isUndercover
-                          ? 'YOU ARE UNDERCOVER!'
-                          : 'YOU ARE SAFE',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w900,
-                    color: isFraud ? Colors.white : themeColor,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: card2.withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        categoryIcons[roundCat] ?? '📁',
-                        style: const TextStyle(fontSize: 18),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Category: $roundCat',
-                        style: const TextStyle(
-                          color: yellow,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (isFraud) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF280B14),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: red.withValues(alpha: 0.6),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: const Column(
-                      children: [
-                        Text(
-                          '? ? ?',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 4,
-                            color: red,
-                          ),
-                        ),
-                        SizedBox(height: 6),
-                        Text(
-                          'SECRET WORD UNKNOWN',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: muted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    selectedMode.fraudCount > 1
-                        ? 'There are 2 frauds this round! Listen closely, blend in, and try to deduce the secret word.'
-                        : 'Blend in! Listen to the clues, pretend you know the word, and deduce it before voting.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: muted, fontSize: 13, height: 1.4),
-                  ),
-                ] else if (isUndercover) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF210E3A),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: purple.withValues(alpha: 0.6),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text(
-                          'YOUR DECOY WORD',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: muted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          roundUndercoverWord,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w900,
-                            height: 1.15,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Your word is slightly different from the safe players. Blend in and help expose the fraud!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: muted, fontSize: 13, height: 1.4),
-                  ),
-                ] else ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0C2B1C),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: green.withValues(alpha: 0.6),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text(
-                          'YOUR SECRET WORD',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: muted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          roundWord,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 38,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.1,
-                            height: 1.15,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Give subtle clues to prove you know the word without giving it away to the fraud!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: muted, fontSize: 13, height: 1.4),
-                  ),
-                ],
-              ],
-            ),
-          ),
+        _revealCard(
+          playerIdx: idx,
+          isFraud: isFraud,
+          isUndercover: isUndercover,
+          themeColor: themeColor,
+          bgGradient: bgGradient,
         ),
         const SizedBox(height: 16),
         _primary(last ? 'Hide and start discussion' : 'Hide and pass on', hideAndPass),
@@ -1652,50 +1855,836 @@ class _GamePageState extends State<GamePage> {
     );
   }
 
-  Widget _discuss() => Column(
+  Widget _revealCard({
+    required int playerIdx,
+    required bool isFraud,
+    required bool isUndercover,
+    required Color themeColor,
+    required Gradient bgGradient,
+  }) {
+    final frontCard = _revealCardFront(
+      playerIdx: playerIdx,
+      isFraud: isFraud,
+      isUndercover: isUndercover,
+      themeColor: themeColor,
+      bgGradient: bgGradient,
+    );
+    final backCard = _revealCardBack(playerIdx);
+
+    return TweenAnimationBuilder<double>(
+      key: ValueKey('reveal_flip_$passIdx'),
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOutCubic,
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      builder: (context, value, _) {
+        final isFront = value >= 0.5;
+        final angle = isFront ? (value - 1.0) * pi : value * pi;
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            Opacity(
+              opacity: isFront ? 1.0 : 0.0,
+              child: Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.001)
+                  ..rotateY((value - 1.0) * pi),
+                child: frontCard,
+              ),
+            ),
+            if (!isFront)
+              Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.001)
+                  ..rotateY(angle),
+                child: backCard,
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _revealCardBack(int playerIdx) {
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 380),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E2448), Color(0xFF0F1326)],
+        ),
+        border: Border.all(color: yellow.withValues(alpha: 0.7), width: 2.5),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: yellow.withValues(alpha: 0.3),
+            blurRadius: 32,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _title('Discuss!'),
-          _categoryLabel(roundCat, size: 20),
-          const SizedBox(height: 6),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
+              shape: BoxShape.circle,
               color: card2,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: border),
+              border: Border.all(color: yellow.withValues(alpha: 0.8), width: 2.5),
+              boxShadow: [
+                BoxShadow(
+                  color: yellow.withValues(alpha: 0.4),
+                  blurRadius: 20,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
-            child: Text('Mode: ${selectedMode.title}',
-                style: const TextStyle(
-                    color: yellow, fontSize: 12, fontWeight: FontWeight.w800)),
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.help_outline_rounded,
+              color: yellow,
+              size: 42,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: yellow.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: yellow.withValues(alpha: 0.5)),
+            ),
+            child: const Text(
+              'TOP SECRET • سري للغاية',
+              style: TextStyle(
+                color: yellow,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            players[playerIdx],
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: ink,
+              letterSpacing: 0.5,
+            ),
           ),
           const SizedBox(height: 10),
-          _mutedText('Give clues and ask each other questions. Do not say your secret word!'),
-          if (timerMinutes > 0) ...[
-            const SizedBox(height: 10),
-            Text(
-              '${secondsLeft ~/ 60}:${(secondsLeft % 60).toString().padLeft(2, '0')}',
+          const Text(
+            'REVEALING ROLE...',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: muted,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _revealCardFront({
+    required int playerIdx,
+    required bool isFraud,
+    required bool isUndercover,
+    required Color themeColor,
+    required Gradient bgGradient,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 26),
+      decoration: BoxDecoration(
+        gradient: bgGradient,
+        border: Border.all(color: themeColor, width: 2.5),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: themeColor.withValues(alpha: 0.42),
+            blurRadius: 32,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isFraud
+                  ? const Color(0xFF63152A)
+                  : isUndercover
+                      ? const Color(0xFF471F7A)
+                      : const Color(0xFF165236),
+              border: Border.all(color: themeColor, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: themeColor.withValues(alpha: 0.5),
+                  blurRadius: 16,
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              isFraud
+                  ? Icons.theater_comedy_rounded
+                  : isUndercover
+                      ? Icons.visibility_off_rounded
+                      : Icons.shield_rounded,
+              color: Colors.white,
+              size: 36,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            decoration: BoxDecoration(
+              color: themeColor.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: themeColor),
+            ),
+            child: Text(
+              isFraud
+                  ? '🎭 IMPOSTER'
+                  : isUndercover
+                      ? '🕵️ UNDERCOVER AGENT'
+                      : '🛡️ INNOCENT / SAFE',
+              style: TextStyle(
+                color: themeColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.1,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            isFraud
+                ? 'YOU ARE THE FRAUD!'
+                : isUndercover
+                    ? 'YOU ARE UNDERCOVER!'
+                    : 'YOU ARE SAFE',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w900,
+              color: isFraud ? Colors.white : themeColor,
+              letterSpacing: 0.5,
+            ),
+          ),
+          // Authentic Barra El Salfa bilingual role banner
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            decoration: BoxDecoration(
+              color: themeColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: themeColor.withValues(alpha: 0.6), width: 1.5),
+            ),
+            child: Text(
+              isFraud
+                  ? 'OUTSIDE THE STORY (برا السالفة)'
+                  : isUndercover
+                      ? 'UNDERCOVER (داخل السالفة - كلمة مختلفة)'
+                      : 'INSIDE THE STORY (داخل السالفة)',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 44, fontWeight: FontWeight.w900),
+              style: TextStyle(
+                color: themeColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: card2.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: border),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    categoryIcons[roundCat] ?? '📁',
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Category: $roundCat',
+                    style: const TextStyle(
+                      color: yellow,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (isFraud) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF280B14),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: red.withValues(alpha: 0.6),
+                  width: 1.5,
+                ),
+              ),
+              child: const Column(
+                children: [
+                  Text(
+                    '? ? ?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 4,
+                      color: red,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'SECRET WORD UNKNOWN',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              selectedMode.fraudCount > 1
+                  ? 'There are 2 frauds this round! Listen closely, blend in, and try to deduce the secret word.'
+                  : 'Blend in! Listen to the clues, pretend you know the word, and deduce it before voting.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: muted, fontSize: 13, height: 1.4),
+            ),
+          ] else if (isUndercover) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF210E3A),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: purple.withValues(alpha: 0.6),
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'YOUR DECOY WORD',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    roundUndercoverWord,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w900,
+                      height: 1.15,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Your word is slightly different from the safe players. Blend in and help expose the fraud!',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: muted, fontSize: 13, height: 1.4),
+            ),
+          ] else ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0C2B1C),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: green.withValues(alpha: 0.6),
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'YOUR SECRET WORD',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    roundWord,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 38,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.1,
+                      height: 1.15,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Give subtle clues to prove you know the word without giving it away to the fraud!',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: muted, fontSize: 13, height: 1.4),
             ),
           ],
-          const SizedBox(height: 14),
-          _card(Column(
+        ],
+      ),
+    );
+  }
+
+  Widget _discuss() {
+    final totalQuestions = players.length;
+    final List<int> askers = (questionAskers.length == totalQuestions)
+        ? questionAskers
+        : List.generate(totalQuestions, (i) => i);
+    final List<int> targets = (questionTargets.length == totalQuestions)
+        ? questionTargets
+        : List.generate(totalQuestions, (i) => (i + 1) % totalQuestions);
+    final currentIdx = questionTurnIdx.clamp(0, totalQuestions - 1);
+    final askerName = players[askers[currentIdx]];
+    final responderName = players[targets[currentIdx]];
+    final bool isLast = currentIdx == totalQuestions - 1;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _title('Discuss!'),
+        _categoryLabel(roundCat, size: 20),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+          decoration: BoxDecoration(
+            color: card2,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: border),
+          ),
+          child: Text(
+            'Mode: ${selectedMode.title}',
+            style: const TextStyle(
+              color: yellow,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _mutedText('Give clues and ask each other questions. Do not say your secret word!'),
+        if (timerMinutes > 0) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            decoration: BoxDecoration(
+              color: card2,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: (secondsLeft <= 10 && secondsLeft > 0) ? red : border,
+                width: 1.5,
+              ),
+            ),
+            child: Text(
+              '${secondsLeft ~/ 60}:${(secondsLeft % 60).toString().padLeft(2, '0')}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 42,
+                fontWeight: FontWeight.w900,
+                color: (secondsLeft <= 10 && secondsLeft > 0) ? red : ink,
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 14),
+
+        // Turn-by-turn Questioning Round Card (Feature F14 / Requirement R5)
+        _card(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text('Players, in order:',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              ...players.map((p) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Text(p, textAlign: TextAlign.center),
-                  )),
+              // Question Turn Header
+              SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: yellow.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: yellow.withValues(alpha: 0.5)),
+                      ),
+                      child: Text(
+                        'Question ${currentIdx + 1} of $totalQuestions',
+                        style: const TextStyle(
+                          color: yellow,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: card2,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: border),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.quiz_rounded, size: 14, color: muted),
+                          SizedBox(width: 4),
+                          Text(
+                            'Questioning Round',
+                            style: TextStyle(
+                              color: muted,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Asker Card with voice icon
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: card2,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: yellow.withValues(alpha: 0.4), width: 1.5),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: yellow.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.record_voice_over_rounded,
+                        color: yellow,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'ASKER',
+                            style: TextStyle(
+                              color: yellow,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            askerName,
+                            style: const TextStyle(
+                              color: ink,
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Directional "asks" connector
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      height: 1,
+                      width: 36,
+                      color: border,
+                    ),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: card2,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: border),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.arrow_downward_rounded, size: 14, color: yellow),
+                          SizedBox(width: 4),
+                          Text(
+                            'asks',
+                            style: TextStyle(
+                              color: ink,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      height: 1,
+                      width: 36,
+                      color: border,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Responder Card with hearing icon
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: card2,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: green.withValues(alpha: 0.4), width: 1.5),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: green.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.hearing_rounded,
+                        color: green,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'RESPONDER',
+                            style: TextStyle(
+                              color: green,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            responderName,
+                            style: const TextStyle(
+                              color: ink,
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Prompt guidance
+              Text(
+                '$askerName asks $responderName a question about the secret word.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: ink,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Navigation Buttons: Next / Previous question
+              if (currentIdx > 0) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Sound.tap();
+                      if (questionTurnIdx > 0) setState(() => questionTurnIdx--);
+                    },
+                    icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                    label: const Text('Previous question'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: ink,
+                      side: const BorderSide(color: border),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+              if (!isLast)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Sound.tap();
+                      if (questionTurnIdx < totalQuestions - 1) setState(() => questionTurnIdx++);
+                    },
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                    label: const Text('Next question'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: yellow,
+                      foregroundColor: const Color(0xFF1A1400),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: green.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: green.withValues(alpha: 0.4)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle_outline_rounded, size: 16, color: green),
+                      SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          '✓ All questions asked! Ready to vote.',
+                          style: TextStyle(
+                            color: green,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              const SizedBox(height: 14),
+
+              // Turn sequence progress capsules
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(totalQuestions, (idx) {
+                  final isActive = idx == currentIdx;
+                  final isDone = idx < currentIdx;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: isActive ? 22 : 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: isActive ? yellow : (isDone ? green : border),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  );
+                }),
+              ),
             ],
-          )),
-          _primary('Vote: who is the fraud?', startVoting),
-        ],
-      );
+          ),
+        ),
+
+        const SizedBox(height: 14),
+        _primary('Vote: who is the fraud?', startVoting),
+      ],
+    );
+  }
 
   Widget _vote() {
     if (!voteRevealed) {
@@ -1910,55 +2899,157 @@ class _GamePageState extends State<GamePage> {
   Widget _result() {
     final sorted = scores.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
+    final isPlayersWin = fraudCaughtByMajority && !fraudGuessedCorrectly;
+    final heroBannerText = isPlayersWin
+        ? '🎉 PLAYERS IN THE KNOW WIN!'
+        : (fraudGuessedCorrectly ? '🎭 THE FRAUD ESCAPED!' : '🎭 THE FRAUD ESCAPED!');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _title(resultTitle),
-        _mutedText(resultLine),
+        // a. Victory/Defeat Hero Banner
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+          decoration: BoxDecoration(
+            color: isPlayersWin
+                ? green.withValues(alpha: 0.15)
+                : red.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isPlayersWin
+                  ? green.withValues(alpha: 0.6)
+                  : red.withValues(alpha: 0.6),
+              width: 2,
+            ),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isPlayersWin
+                        ? Icons.emoji_events_rounded
+                        : Icons.theater_comedy_rounded,
+                    color: isPlayersWin ? green : red,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    heroBannerText,
+                    style: TextStyle(
+                      color: isPlayersWin ? green : red,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                resultTitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: ink,
+                ),
+              ),
+              const SizedBox(height: 4),
+              _mutedText(resultLine),
+            ],
+          ),
+        ),
         const SizedBox(height: 12),
+
+        // b. Secret Word Reveal Card with category icon
         _card(Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-              decoration: BoxDecoration(
-                color: card2,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: border),
-              ),
-              child: Text('Mode: ${selectedMode.title}',
-                  style: const TextStyle(
-                      color: yellow, fontSize: 12, fontWeight: FontWeight.w800)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: card2,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    categoryIcons[roundCat] ?? '🎭',
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _categoryLabel(roundCat, size: 14),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: card2,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: border),
+                  ),
+                  child: Text(
+                    'Mode: ${selectedMode.title}',
+                    style: const TextStyle(
+                      color: yellow,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Secret Word: $roundWord',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: ink),
             ),
             const SizedBox(height: 10),
-            Text('Secret Word: $roundWord',
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: red.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: red.withValues(alpha: 0.4)),
+              ),
+              child: Text(
+                selectedMode.fraudCount > 1
+                    ? 'Frauds: ${fraudIndices.map((i) => players[i]).join(', ')}'
+                    : 'Fraud: ${fraudIndices.map((i) => players[i]).join(', ')}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            _categoryLabel(roundCat),
-            const SizedBox(height: 10),
-            Text(
-              selectedMode.fraudCount > 1
-                  ? 'Frauds: ${fraudIndices.map((i) => players[i]).join(', ')}'
-                  : 'Fraud: ${fraudIndices.map((i) => players[i]).join(', ')}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.w700, color: red),
+                style: const TextStyle(fontWeight: FontWeight.w800, color: red, fontSize: 14),
+              ),
             ),
             if (undercoverIndex != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                'Undercover: ${players[undercoverIndex!]} (Word: "$roundUndercoverWord")',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w700, color: purple),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: purple.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: purple.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  'Undercover: ${players[undercoverIndex!]} (Word: "$roundUndercoverWord")',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.w800, color: purple, fontSize: 13),
+                ),
               ),
             ],
             if (allVotes.isNotEmpty) ...[
               const SizedBox(height: 14),
               const Divider(color: border),
               const SizedBox(height: 8),
-              const Text('Vote Summary',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              const Text(
+                'Vote Summary',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
               const SizedBox(height: 6),
               ...players.map((name) {
                 final idx = players.indexOf(name);
@@ -1970,66 +3061,14 @@ class _GamePageState extends State<GamePage> {
                     : isUnder
                         ? ' [Undercover]'
                         : '';
-                return Text('$name$badge: $count vote${count == 1 ? '' : 's'}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: count > (players.length / 2) ? red : muted,
-                        fontWeight: count > (players.length / 2)
-                            ? FontWeight.w700
-                            : FontWeight.normal));
-              }),
-              const SizedBox(height: 12),
-              const Divider(color: border),
-              const SizedBox(height: 8),
-              const Text('Barra El Salfa Points This Round',
+                return Text(
+                  '$name$badge: $count vote${count == 1 ? '' : 's'}',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-              const SizedBox(height: 6),
-              ...List.generate(players.length, (i) {
-                final pts = pointsEarnedThisRound[i] ?? 0;
-                final voterTarget = playerVotes[i];
-                String reason = '';
-                if (pts > 0) {
-                  if (fraudIndices.contains(i)) {
-                    reason = fraudGuessedCorrectly ? 'Guessed the word!' : 'Escaped undetected!';
-                  } else if (i == undercoverIndex) {
-                    reason = 'Survived undercover!';
-                  } else if (voterTarget != null && caughtFrauds.contains(voterTarget)) {
-                    reason = 'Correctly voted for ${players[voterTarget]}';
-                  } else {
-                    reason = 'Round bonus';
-                  }
-                } else {
-                  if (fraudIndices.contains(i)) {
-                    reason = 'Caught & missed guess';
-                  } else if (voterTarget != null) {
-                    reason = 'Voted for ${players[voterTarget]}';
-                  } else {
-                    reason = 'No points';
-                  }
-                }
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          '${players[i]} ($reason)',
-                          style: TextStyle(
-                              color: pts > 0 ? ink : muted,
-                              fontSize: 13,
-                              fontWeight: pts > 0 ? FontWeight.w700 : FontWeight.normal),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        pts > 0 ? '+$pts pts' : '0 pts',
-                        style: TextStyle(
-                            color: pts > 0 ? green : muted,
-                            fontWeight: FontWeight.w800),
-                      ),
-                    ],
+                  style: TextStyle(
+                    color: count > (players.length / 2) ? red : muted,
+                    fontWeight: count > (players.length / 2)
+                        ? FontWeight.w700
+                        : FontWeight.normal,
                   ),
                 );
               }),
@@ -2037,24 +3076,183 @@ class _GamePageState extends State<GamePage> {
           ],
         )),
         const SizedBox(height: 12),
-        const Text('Total Leaderboard',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 8),
-        ...sorted.map((e) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(e.key, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                  Text('${e.value} pts',
-                      style: const TextStyle(
-                          color: yellow, fontWeight: FontWeight.w800, fontSize: 16)),
-                ],
-              ),
-            )),
+
+        // c. Round Points (+100 pts) Chips with explanation
+        _card(Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: card2,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.star_rounded, color: yellow, size: 20),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Barra El Salfa Points This Round',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ...List.generate(players.length, (i) {
+              final pts = pointsEarnedThisRound[i] ?? 0;
+              final voterTarget = playerVotes[i];
+              String reason = '';
+              if (pts > 0) {
+                if (fraudIndices.contains(i)) {
+                  reason = fraudGuessedCorrectly ? 'Guessed the word!' : 'Escaped undetected!';
+                } else if (i == undercoverIndex) {
+                  reason = 'Survived undercover!';
+                } else if (voterTarget != null && caughtFrauds.contains(voterTarget)) {
+                  reason = 'Correctly voted for ${players[voterTarget]}';
+                } else {
+                  reason = 'Round bonus';
+                }
+              } else {
+                if (fraudIndices.contains(i)) {
+                  reason = 'Caught & missed guess';
+                } else if (voterTarget != null) {
+                  reason = 'Voted for ${players[voterTarget]}';
+                } else {
+                  reason = 'No points';
+                }
+              }
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: pts > 0 ? card2 : card2.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: pts > 0 ? green.withValues(alpha: 0.4) : border.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '${players[i]} ($reason)',
+                        style: TextStyle(
+                          color: pts > 0 ? ink : muted,
+                          fontSize: 13,
+                          fontWeight: pts > 0 ? FontWeight.w700 : FontWeight.normal,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: pts > 0 ? green.withValues(alpha: 0.15) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        pts > 0 ? '+$pts pts' : '0 pts',
+                        style: TextStyle(
+                          color: pts > 0 ? green : muted,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        )),
+        const SizedBox(height: 12),
+
+        // d. Ranked Leaderboard Podium (🥇 1st, 🥈 2nd, 🥉 3rd)
+        _card(Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.leaderboard_rounded, color: yellow, size: 22),
+                SizedBox(width: 8),
+                Text(
+                  'Total Leaderboard',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...List.generate(sorted.length, (rankIdx) {
+              final entry = sorted[rankIdx];
+              final medal = rankIdx == 0
+                  ? '🥇'
+                  : rankIdx == 1
+                      ? '🥈'
+                      : rankIdx == 2
+                          ? '🥉'
+                          : '${rankIdx + 1}.';
+              final isTop3 = rankIdx < 3;
+              final borderColor = rankIdx == 0
+                  ? yellow
+                  : rankIdx == 1
+                      ? const Color(0xFFC0C0C0)
+                      : rankIdx == 2
+                          ? const Color(0xFFCD7F32)
+                          : border;
+
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isTop3 ? card2 : card2.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isTop3 ? borderColor.withValues(alpha: 0.7) : border,
+                    width: isTop3 ? 1.5 : 1.0,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Text(medal, style: const TextStyle(fontSize: 18)),
+                        const SizedBox(width: 10),
+                        Text(
+                          entry.key,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            color: ink,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isTop3 ? yellow.withValues(alpha: 0.15) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${entry.value} pts',
+                        style: TextStyle(
+                          color: isTop3 ? yellow : ink,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        )),
         const SizedBox(height: 16),
-        _primary('Start a new round', () {
+        _primaryWithIcon('Start a new round', Icons.replay_rounded, () {
           Sound.start();
           startRound();
         }),

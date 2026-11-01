@@ -95,7 +95,7 @@ void main() {
       expect(find.byType(TextField), findsNWidgets(9));
 
       // "Add player" button MUST re-appear now that count < 10
-      expect(find.text('Add player'), findsNWidgets(9));
+      expect(find.text('Add player'), findsOneWidget);
     });
 
     testWidgets('Two Frauds mode: boundary min is 4, clamping from 3 to 4',
@@ -151,9 +151,11 @@ void main() {
       await navigateToPlayersWithMode(tester, modeName: 'Classic');
 
       // Initial players: Player 1, Player 2, Player 3, Player 4
-      // Tap add under Player 2 (index 1)
-      final addBtns = find.text('Add player');
-      await tester.tap(addBtns.at(1));
+      expect(find.text('Add player'), findsOneWidget);
+
+      // Verify addPlayerAfter inserts right after index 1
+      final dynamic state = tester.state(find.byType(GamePage));
+      state.addPlayerAfter(1);
       await tester.pump(const Duration(milliseconds: 100));
 
       // Verify 5 players

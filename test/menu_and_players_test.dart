@@ -27,7 +27,9 @@ void main() {
       expect(find.text('How to Play'), findsNothing);
       expect(find.text('Play'), findsOneWidget);
       expect(find.text('Settings'), findsOneWidget);
-      expect(find.byType(ShaderMask), findsWidgets);
+      expect(find.text('The English Barra El Salfa'), findsNothing);
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.byType(FilmStripBackground), findsOneWidget);
     });
 
     testWidgets('Navigating to Rules screen displays "Rules" title',
@@ -95,12 +97,12 @@ void main() {
       final removeButtons = find.byTooltip('Remove player');
       expect(removeButtons, findsNWidgets(4));
 
-      // Each player has an "Add player" button under it
+      // Single "Add player" button rendered below the final player
       final addPlayerButtons = find.text('Add player');
-      expect(addPlayerButtons, findsNWidgets(4));
+      expect(addPlayerButtons, findsOneWidget);
 
-      // Tap "Add player" under player 1
-      await tester.tap(addPlayerButtons.first);
+      // Tap "Add player"
+      await tester.tap(addPlayerButtons);
       await tester.pump(const Duration(milliseconds: 100));
 
       // Now 5 players
