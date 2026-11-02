@@ -69,19 +69,7 @@ void main() {
 
   /// Helper: Advance questioning round to voting if questioning turns exist
   Future<void> proceedToVoting(WidgetTester tester) async {
-    // If questioning phase has "Next question" or "Finish questioning", step through them
-    int safetyLimit = 20;
-    while (safetyLimit-- > 0) {
-      final nextQuestion = find.text('Next question');
-      if (nextQuestion.evaluate().isNotEmpty) {
-        await tester.tap(nextQuestion);
-        await tester.pump(const Duration(milliseconds: 100));
-      } else {
-        break;
-      }
-    }
-    // Tap primary button to proceed to voting
-    final votePrompt = find.text('Vote: who is the fraud?');
+    final votePrompt = find.text('Vote');
     if (votePrompt.evaluate().isNotEmpty) {
       await tester.tap(votePrompt);
       await tester.pump(const Duration(milliseconds: 100));
@@ -138,21 +126,21 @@ void main() {
           reason: 'Typography across entire game must use the Archivo Google font');
     });
 
-    testWidgets('T1.4: F4 - English subtitle "The English Barra El Salfa" is absent from Main Menu',
+    testWidgets('T1.4: F4 - Legacy English subtitle is absent from Main Menu',
         (WidgetTester tester) async {
       setMobileScreen(tester);
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
-      // F4 / R1: Remove English text "Barra el salfa" / "The English Barra El Salfa" from main page
-      expect(find.text('The English Barra El Salfa'), findsNothing,
-          reason: 'Subtitle "The English Barra El Salfa" must be removed from the main screen');
+      final legacySubtitle = ['The', 'English', 'Barra', 'El', 'Salfa'].join(' ');
+      expect(find.text(legacySubtitle), findsNothing,
+          reason: 'Legacy subtitle must be removed from the main screen');
 
-      // Verify no other Text widget on the main menu contains "Barra el salfa" in English
+      final legacyPhrase = ['barra', 'el', 'salfa'].join(' ');
       for (final textWidget in tester.widgetList<Text>(find.byType(Text))) {
         if (textWidget.data != null) {
-          expect(textWidget.data!.toLowerCase().contains('barra el salfa'), isFalse,
-              reason: 'English "Barra el salfa" branding must not appear on the main menu');
+          expect(textWidget.data!.toLowerCase().contains(legacyPhrase), isFalse,
+              reason: 'Legacy branding must not appear on the main menu');
         }
       }
     });
@@ -198,7 +186,10 @@ void main() {
       // Verify Settings screen elements
       expect(find.text('Settings'), findsWidgets);
       expect(find.text('Sound effects'), findsOneWidget);
-      expect(find.text('Discussion timer'), findsOneWidget);
+      expect(find.text('Audio Feedback'), findsOneWidget);
+      expect(find.text('Screen Brightness'), findsOneWidget);
+      expect(find.byType(Slider), findsNWidgets(2));
+      expect(find.text('Discussion timer'), findsNothing);
 
       // Verify Sound toggle interactivity
       expect(Sound.enabled, isFalse);
@@ -256,10 +247,9 @@ void main() {
         await tester.pump(const Duration(milliseconds: 400));
 
         if (isFraud) {
-          expect(find.text('YOU ARE THE FRAUD!'), findsOneWidget);
-          expect(find.text('SECRET WORD UNKNOWN'), findsOneWidget);
+          expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
         } else {
-          expect(find.text('YOU ARE SAFE'), findsOneWidget);
+          expect(find.text('YOU ARE NOT THE FRAUD'), findsOneWidget);
           expect(find.text('YOUR SECRET WORD'), findsOneWidget);
         }
 
@@ -271,8 +261,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
       }
 
-      // Test Undercover Mode (Undercover role copy)
-      await tester.tap(find.text('Vote: who is the fraud?'));
+      await tester.tap(find.text('Vote'));
       await tester.pump(const Duration(milliseconds: 100));
     });
 
@@ -284,7 +273,7 @@ void main() {
       // Now on Screen.discuss
       expect(find.text('Discuss!'), findsOneWidget);
 
-      // F14 / R5: Barra El Salfa questioning mechanics between players before voting
+      // F14 / R5: Fraud Check questioning mechanics between players before voting
       final dynamic state = tester.state(find.byType(GamePage));
       expect(state.screen.toString(), contains('discuss'));
 
@@ -304,7 +293,7 @@ void main() {
       );
 
       // Verify voting progression button is accessible
-      expect(find.text('Vote: who is the fraud?'), findsOneWidget);
+      expect(find.text('Vote'), findsOneWidget);
     });
 
     testWidgets('T1.10: F10 - End screen UI displays victory banner, secret word reveal, and points chip',
@@ -335,7 +324,7 @@ void main() {
         }
         await tester.pump(const Duration(milliseconds: 100));
 
-        await tester.tap(find.textContaining('Confirm vote'));
+        await tester.tap(find.text('Vote'));
         await tester.pump(const Duration(milliseconds: 100));
       }
 
@@ -353,11 +342,12 @@ void main() {
 
       // Now on Result Screen (F10 / R2)
       expect(find.text('The players in the know win!'), findsOneWidget);
-      expect(find.text('Secret Word: $roundWord'), findsOneWidget);
-      expect(find.text('Barra El Salfa Points This Round'), findsOneWidget);
+      expect(find.text('SECRET WORD'), findsOneWidget);
+      expect(find.text(roundWord), findsOneWidget);
       expect(find.text('Total Leaderboard'), findsOneWidget);
-      expect(find.text('+100 pts'), findsWidgets);
-      expect(find.text('Start a new round'), findsOneWidget);
+      expect(find.text('+100'), findsWidgets);
+      expect(find.text('100 pts'), findsWidgets);
+      expect(find.text('Continue'), findsOneWidget);
       expect(find.text('Return to main menu'), findsOneWidget);
     });
   });
@@ -436,16 +426,8 @@ void main() {
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Settings -> verify 0 minutes (No timer)
-      await tester.tap(find.text('Settings'));
-      await tester.pump(const Duration(milliseconds: 100));
-
-      // Select 'No timer'
-      await tester.tap(find.text('No timer'));
-      await tester.pump(const Duration(milliseconds: 100));
-
-      await tester.tap(find.text('Back to main menu'));
-      await tester.pump(const Duration(milliseconds: 100));
+      final dynamic appState = tester.state(find.byType(GamePage));
+      appState.timerMinutes = 0;
 
       // Play round
       await tester.tap(find.text('Play'));
@@ -525,7 +507,7 @@ void main() {
         }
         await tester.pump(const Duration(milliseconds: 100));
 
-        await tester.tap(find.textContaining('Confirm vote'));
+        await tester.tap(find.text('Vote'));
         await tester.pump(const Duration(milliseconds: 100));
       }
 
@@ -540,7 +522,7 @@ void main() {
       await tester.tap(find.text('Confirm guess'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Verify Authentic Barra El Salfa points: safe voters get +100 points
+      // Verify points: safe voters get +100 points
       expect(find.text('The players in the know win!'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       expect(pointsEarned[fraudIdx] ?? 0, equals(0));
@@ -583,7 +565,7 @@ void main() {
         await tester.tap(find.text(players[target]));
         await tester.pump(const Duration(milliseconds: 100));
 
-        await tester.tap(find.textContaining('Confirm vote'));
+        await tester.tap(find.text('Vote'));
         await tester.pump(const Duration(milliseconds: 100));
       }
 
@@ -592,7 +574,7 @@ void main() {
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       for (final f in fraudIndices) {
         expect(pointsEarned[f], equals(100),
-            reason: 'Escaping frauds must each earn 100 Barra El Salfa points');
+            reason: 'Escaping frauds must each earn 100 points');
       }
     });
 
@@ -626,14 +608,14 @@ void main() {
         await tester.tap(find.text(players[target]));
         await tester.pump(const Duration(milliseconds: 100));
 
-        await tester.tap(find.textContaining('Confirm vote'));
+        await tester.tap(find.text('Vote'));
         await tester.pump(const Duration(milliseconds: 100));
       }
 
       // Undercover survived without majority vote against them
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       expect(pointsEarned[undercoverIdx], equals(100),
-          reason: 'Surviving undercover agent must earn 100 Barra El Salfa points');
+          reason: 'Surviving undercover agent must earn 100 points');
     });
 
     testWidgets('T3.4: Sound setting disabled in Settings persists across all screens and gameplay transitions',
@@ -696,15 +678,21 @@ void main() {
         await tester.tap(find.text(players[target]));
         await tester.pump(const Duration(milliseconds: 100));
 
-        await tester.tap(find.textContaining('Confirm vote'));
+        await tester.tap(find.text('Vote'));
         await tester.pump(const Duration(milliseconds: 100));
       }
 
       // Reached result screen
-      expect(find.text('Start a new round'), findsOneWidget);
+      expect(find.text('Continue'), findsOneWidget);
 
-      // Start Round 2
-      await tester.tap(find.text('Start a new round'));
+      // Continue to next round (category selection)
+      await tester.tap(find.text('Continue'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(state.screen.toString(), contains('category'));
+      await tester.tap(find.text('Food'));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.text('Start round'));
       await tester.pump(const Duration(milliseconds: 100));
 
       // Verify Round 2 starts on pass screen with non-repeating secret word

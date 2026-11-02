@@ -115,7 +115,7 @@ void main() {
       }
 
       // Discuss screen -> begin voting
-      await tester.tap(find.text('Vote: who is the fraud?'));
+      await tester.tap(find.text('Vote'));
       await tester.pump(const Duration(milliseconds: 100));
 
       // Vote Stage 1: Pass the phone to voter
@@ -192,39 +192,36 @@ void main() {
           }
         }
 
-        // Category pill must be present
+        // Category pill must be present outside at top
         expect(find.textContaining('Category: Food'), findsOneWidget);
 
         if (isFraud) {
           imposterSeen = true;
-          // Imposter presentation
-          expect(find.text('🎭 IMPOSTER'), findsOneWidget);
-          expect(find.text('YOU ARE THE FRAUD!'), findsOneWidget);
-          expect(find.text('? ? ?'), findsOneWidget);
-          expect(find.text('SECRET WORD UNKNOWN'), findsOneWidget);
-          expect(find.byIcon(Icons.theater_comedy_rounded), findsOneWidget);
+          // Imposter presentation (R6 overhaul)
+          expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
+          expect(find.textContaining('blend in'), findsOneWidget);
+          expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
 
           // Secret word MUST NOT be leaked to fraud
           expect(find.text(roundWord), findsNothing);
         } else if (isUndercover) {
           undercoverSeen = true;
           // Undercover presentation
-          expect(find.text('🕵️ UNDERCOVER AGENT'), findsOneWidget);
-          expect(find.text('YOU ARE UNDERCOVER!'), findsOneWidget);
+          expect(find.text('👁️ UNDERCOVER'), findsOneWidget);
+          expect(find.text('YOU ARE UNDERCOVER'), findsOneWidget);
           expect(find.text('YOUR DECOY WORD'), findsOneWidget);
           expect(find.text(roundUndercoverWord), findsOneWidget);
-          expect(find.byIcon(Icons.visibility_off_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
 
           // True secret word MUST NOT be shown to undercover
           expect(find.text(roundWord), findsNothing);
         } else if (isSafe) {
           safeSeen = true;
           // Safe presentation
-          expect(find.text('🛡️ INNOCENT / SAFE'), findsOneWidget);
-          expect(find.text('YOU ARE SAFE'), findsOneWidget);
+          expect(find.text('YOU ARE NOT THE FRAUD'), findsOneWidget);
           expect(find.text('YOUR SECRET WORD'), findsOneWidget);
           expect(find.text(roundWord), findsOneWidget);
-          expect(find.byIcon(Icons.shield_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
         }
 
         // Advance to next player
@@ -270,8 +267,7 @@ void main() {
 
         if (isFraud) {
           fraudCountEncountered++;
-          expect(find.text('🎭 IMPOSTER'), findsOneWidget);
-          expect(find.text('YOU ARE THE FRAUD!'), findsOneWidget);
+          expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
           expect(find.textContaining('There are 2 frauds this round!'), findsOneWidget);
         }
 
@@ -303,7 +299,7 @@ void main() {
       }
 
       // Discuss screen -> begin voting
-      await tester.tap(find.text('Vote: who is the fraud?'));
+      await tester.tap(find.text('Vote'));
       await tester.pump(const Duration(milliseconds: 100));
 
       // Tap to vote
@@ -359,8 +355,8 @@ void main() {
       final List<String> players = (state.players as List<String>);
       final String currentVoterName = players[currentVoterIdx];
 
-      // Check header shows Voter name
-      expect(find.text('🗳️ Voter: $currentVoterName'), findsOneWidget);
+      // Check header shows Voter name (no emoji)
+      expect(find.text('Voter: $currentVoterName'), findsOneWidget);
 
       // Check candidate list contains exactly the other 3 players
       for (int i = 0; i < players.length; i++) {
@@ -387,15 +383,14 @@ void main() {
       await setupVotingScreen(tester);
 
       final dynamic state = tester.state(find.byType(GamePage));
-      final List<String> players = (state.players as List<String>);
 
       // Initially, votePick is null, button is disabled
-      expect(find.text('Select a suspect'), findsOneWidget);
+      expect(find.widgetWithText(ElevatedButton, 'Vote'), findsOneWidget);
       expect(find.byIcon(Icons.radio_button_unchecked_rounded), findsNWidgets(3));
       expect(find.byIcon(Icons.check_circle_rounded), findsNothing);
 
       // Tap confirm button when nothing is selected - should do nothing
-      await tester.tap(find.text('Select a suspect'));
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Vote'));
       await tester.pump(const Duration(milliseconds: 100));
       expect(state.voteIdx, equals(0));
 
@@ -409,7 +404,6 @@ void main() {
       expect(find.byIcon(Icons.radio_button_unchecked_rounded), findsNWidgets(2));
 
       final firstPicked = state.votePick as int;
-      expect(find.text('Confirm vote for ${players[firstPicked]}'), findsOneWidget);
 
       // Tap the second candidate: selection should switch
       final remainingRadios = find.byIcon(Icons.radio_button_unchecked_rounded);
@@ -421,10 +415,9 @@ void main() {
 
       final secondPicked = state.votePick as int;
       expect(secondPicked != firstPicked, isTrue);
-      expect(find.text('Confirm vote for ${players[secondPicked]}'), findsOneWidget);
 
       // Confirm vote
-      await tester.tap(find.text('Confirm vote for ${players[secondPicked]}'));
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Vote'));
       await tester.pump(const Duration(milliseconds: 100));
 
       // Advances to Voter 2 (voteIdx = 1, voteRevealed = false)
@@ -442,7 +435,7 @@ void main() {
       // Cast vote for Voter 1
       await tester.tap(find.byIcon(Icons.radio_button_unchecked_rounded).first);
       await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(find.textContaining('Confirm vote for'));
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Vote'));
       await tester.pump(const Duration(milliseconds: 100));
 
       // Voters 2, 3, 4
@@ -455,7 +448,7 @@ void main() {
         await tester.tap(find.byIcon(Icons.radio_button_unchecked_rounded).first);
         await tester.pump(const Duration(milliseconds: 100));
 
-        await tester.tap(find.textContaining('Confirm vote for'));
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Vote'));
         await tester.pump(const Duration(milliseconds: 100));
       }
 

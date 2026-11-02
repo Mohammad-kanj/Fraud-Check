@@ -175,8 +175,8 @@ void main() {
       expect(find.text('TOP SECRET • سري للغاية'), findsNothing);
       expect(find.byIcon(Icons.help_outline_rounded), findsNothing);
       expect(
-        find.text('INSIDE THE STORY (داخل السالفة)').evaluate().isNotEmpty ||
-            find.text('OUTSIDE THE STORY (برا السالفة)').evaluate().isNotEmpty,
+        find.text('YOU ARE NOT THE FRAUD').evaluate().isNotEmpty ||
+            find.text('YOU ARE THE FRAUD').evaluate().isNotEmpty,
         isTrue,
       );
     });
@@ -250,10 +250,10 @@ void main() {
   });
 
   // =========================================================================
-  // GROUP 3: AUTHENTIC BARRA EL SALFA ROLE WORDING AT PUMP 400MS
+  // GROUP 3: ROLE WORDING AT PUMP 400MS
   // =========================================================================
-  group('F15 - Authentic Barra El Salfa Bilingual Role Wording (400ms)', () {
-    testWidgets('G3.1: Classic Mode - Safe & Fraud roles render authentic Barra El Salfa bilingual banners',
+  group('F15 - Role Reveal Wording (400ms)', () {
+    testWidgets('G3.1: Classic Mode - Safe & Fraud roles render updated R6 banners',
         (WidgetTester tester) async {
       setDefaultScreen(tester);
       await startRound(tester, modeTitle: 'Classic', category: 'Food', targetPlayerCount: 3);
@@ -275,20 +275,15 @@ void main() {
 
         if (isFraud) {
           sawFraud = true;
-          expect(find.text('YOU ARE THE FRAUD!'), findsOneWidget);
-          expect(find.text('🎭 IMPOSTER'), findsOneWidget);
-          expect(find.text('OUTSIDE THE STORY (برا السالفة)'), findsOneWidget);
-          expect(find.text('? ? ?'), findsOneWidget);
-          expect(find.text('SECRET WORD UNKNOWN'), findsOneWidget);
-          expect(find.byIcon(Icons.theater_comedy_rounded), findsOneWidget);
+          expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
+          expect(find.textContaining('blend in'), findsOneWidget);
+          expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
         } else {
           sawSafe = true;
-          expect(find.text('YOU ARE SAFE'), findsOneWidget);
-          expect(find.text('🛡️ INNOCENT / SAFE'), findsOneWidget);
-          expect(find.text('INSIDE THE STORY (داخل السالفة)'), findsOneWidget);
+          expect(find.text('YOU ARE NOT THE FRAUD'), findsOneWidget);
           expect(find.text('YOUR SECRET WORD'), findsOneWidget);
           expect(find.text(roundWord), findsOneWidget);
-          expect(find.byIcon(Icons.shield_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
         }
 
         final isLast = i == passOrder.length - 1;
@@ -303,7 +298,7 @@ void main() {
       expect(sawFraud, isTrue, reason: 'Must test at least one fraud player');
     });
 
-    testWidgets('G3.2: Two Frauds Mode - Both frauds receive OUTSIDE THE STORY and dual-fraud warning',
+    testWidgets('G3.2: Two Frauds Mode - Both frauds receive YOU ARE THE FRAUD and dual-fraud warning',
         (WidgetTester tester) async {
       setDefaultScreen(tester);
       await startRound(tester, modeTitle: 'Two Frauds', category: 'Food', targetPlayerCount: 5);
@@ -326,13 +321,13 @@ void main() {
 
         if (isFraud) {
           fraudCountObserved++;
-          expect(find.text('YOU ARE THE FRAUD!'), findsOneWidget);
-          expect(find.text('OUTSIDE THE STORY (برا السالفة)'), findsOneWidget);
+          expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
           expect(find.textContaining('There are 2 frauds this round!'), findsOneWidget);
+          expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
         } else {
           safeCountObserved++;
-          expect(find.text('YOU ARE SAFE'), findsOneWidget);
-          expect(find.text('INSIDE THE STORY (داخل السالفة)'), findsOneWidget);
+          expect(find.text('YOU ARE NOT THE FRAUD'), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
         }
 
         final isLast = i == passOrder.length - 1;
@@ -347,7 +342,7 @@ void main() {
       expect(safeCountObserved, equals(3));
     });
 
-    testWidgets('G3.3: Undercover Mode - Undercover player renders authentic UNDERCOVER bilingual role banner and decoy word',
+    testWidgets('G3.3: Undercover Mode - Undercover player renders UNDERCOVER role banner and decoy word',
         (WidgetTester tester) async {
       setDefaultScreen(tester);
       await startRound(tester, modeTitle: 'Undercover', category: 'Food', targetPlayerCount: 4);
@@ -372,22 +367,23 @@ void main() {
 
         if (isUndercover) {
           sawUndercover = true;
-          expect(find.text('YOU ARE UNDERCOVER!'), findsOneWidget);
-          expect(find.text('🕵️ UNDERCOVER AGENT'), findsOneWidget);
-          expect(find.text('UNDERCOVER (داخل السالفة - كلمة مختلفة)'), findsOneWidget);
+          expect(find.text('YOU ARE UNDERCOVER'), findsOneWidget);
+          expect(find.text('👁️ UNDERCOVER'), findsOneWidget);
           expect(find.text('YOUR DECOY WORD'), findsOneWidget);
           expect(find.text(undercoverWord), findsOneWidget);
-          expect(find.byIcon(Icons.visibility_off_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
           expect(
-            find.text('Your word is slightly different from the safe players. Blend in and help expose the fraud!'),
+            find.textContaining('Your word is slightly different'),
             findsOneWidget,
           );
         } else if (isFraud) {
           sawFraud = true;
-          expect(find.text('OUTSIDE THE STORY (برا السالفة)'), findsOneWidget);
+          expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
+          expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
         } else {
           sawSafe = true;
-          expect(find.text('INSIDE THE STORY (داخل السالفة)'), findsOneWidget);
+          expect(find.text('YOU ARE NOT THE FRAUD'), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
         }
 
         final isLast = i == passOrder.length - 1;
@@ -536,18 +532,18 @@ void main() {
 
         await tester.pump(const Duration(milliseconds: 400));
         expect(tester.takeException(), isNull, reason: 'Zero layout overflow at 400ms (Safe front card) on $w x $h');
-        expect(find.text('INSIDE THE STORY (داخل السالفة)'), findsOneWidget);
+        expect(find.text('YOU ARE NOT THE FRAUD'), findsOneWidget);
 
         // Test 2: Fraud role on reveal screen
         await directSetupReveal(tester, width: w, height: h, role: 'fraud');
         await tester.pump(const Duration(milliseconds: 400));
-        expect(find.text('OUTSIDE THE STORY (برا السالفة)'), findsOneWidget);
+        expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
         expect(tester.takeException(), isNull, reason: 'Zero layout overflow at 400ms (Fraud front card) on $w x $h');
 
         // Test 3: Undercover role on reveal screen
         await directSetupReveal(tester, width: w, height: h, role: 'undercover');
         await tester.pump(const Duration(milliseconds: 400));
-        expect(find.text('UNDERCOVER (داخل السالفة - كلمة مختلفة)'), findsOneWidget);
+        expect(find.text('YOU ARE UNDERCOVER'), findsOneWidget);
         expect(tester.takeException(), isNull, reason: 'Zero layout overflow at 400ms (Undercover front card) on $w x $h');
       });
     }
@@ -611,8 +607,8 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(
-        find.text('INSIDE THE STORY (داخل السالفة)').evaluate().isNotEmpty ||
-            find.text('OUTSIDE THE STORY (برا السالفة)').evaluate().isNotEmpty,
+        find.text('YOU ARE NOT THE FRAUD').evaluate().isNotEmpty ||
+            find.text('YOU ARE THE FRAUD').evaluate().isNotEmpty,
         isTrue,
         reason: 'Front card must remain stably rendered after extended duration',
       );

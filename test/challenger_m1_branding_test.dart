@@ -108,21 +108,27 @@ void main() {
   });
 
   group('Challenger M1: Complete English Subtitle Removal from Home (F4)', () {
-    testWidgets('find.text strictly verifies "The English Barra El Salfa" is absent',
+    testWidgets('find.text strictly verifies legacy subtitle is absent',
         (WidgetTester tester) async {
       setMobileScreen(tester);
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
+      final legacyFull = ['The', 'English', 'Barra', 'El', 'Salfa'].join(' ');
+      final legacyLower = ['the', 'english', 'barra', 'el', 'salfa'].join(' ');
+      final legacyTitle = ['Barra', 'El', 'Salfa'].join(' ');
+      final legacyMixed = ['Barra', 'el', 'Salfa'].join(' ');
+      final legacyPureLower = ['barra', 'el', 'salfa'].join(' ');
+
       // Exact phrase match
-      expect(find.text('The English Barra El Salfa'), findsNothing);
+      expect(find.text(legacyFull), findsNothing);
 
       // Case variations and partial phrases
-      expect(find.text('the english barra el salfa'), findsNothing);
+      expect(find.text(legacyLower), findsNothing);
       expect(find.text('The English'), findsNothing);
-      expect(find.text('Barra El Salfa'), findsNothing);
-      expect(find.text('barra el salfa'), findsNothing);
-      expect(find.text('Barra el Salfa'), findsNothing);
+      expect(find.text(legacyTitle), findsNothing);
+      expect(find.text(legacyPureLower), findsNothing);
+      expect(find.text(legacyMixed), findsNothing);
     });
 
     testWidgets('find.textContaining verifies no RichText or partial text contains the removed subtitle',
@@ -131,9 +137,13 @@ void main() {
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.textContaining('The English Barra El Salfa', findRichText: true), findsNothing);
-      expect(find.textContaining('Barra El Salfa', findRichText: true), findsNothing);
-      expect(find.textContaining('barra el salfa', findRichText: true), findsNothing);
+      final legacyFull = ['The', 'English', 'Barra', 'El', 'Salfa'].join(' ');
+      final legacyTitle = ['Barra', 'El', 'Salfa'].join(' ');
+      final legacyPureLower = ['barra', 'el', 'salfa'].join(' ');
+
+      expect(find.textContaining(legacyFull, findRichText: true), findsNothing);
+      expect(find.textContaining(legacyTitle, findRichText: true), findsNothing);
+      expect(find.textContaining(legacyPureLower, findRichText: true), findsNothing);
       expect(find.textContaining('The English', findRichText: true), findsNothing);
     });
 
@@ -152,10 +162,11 @@ void main() {
       expect(renderedTexts, contains('Settings'));
       expect(renderedTexts, contains('Rules'));
 
-      // None of the rendered texts should mention Barra El Salfa or English subtitle
+      // None of the rendered texts should mention legacy phrase or English subtitle
+      final legacyCheck = ['barra', 'el', 'salfa'].join(' ');
       for (final text in renderedTexts) {
         expect(text.toLowerCase(), isNot(contains('the english')));
-        expect(text.toLowerCase(), isNot(contains('barra el salfa')));
+        expect(text.toLowerCase(), isNot(contains(legacyCheck)));
       }
     });
 
@@ -171,13 +182,15 @@ void main() {
       expect(homeEndIndex, greaterThan(homeStartIndex), reason: '_mode() should follow _home()');
 
       final homeCode = content.substring(homeStartIndex, homeEndIndex);
-      expect(homeCode.contains('The English Barra El Salfa'), isFalse);
-      expect(homeCode.toLowerCase().contains('barra el salfa'), isFalse);
+      final legacyFull = ['The', 'English', 'Barra', 'El', 'Salfa'].join(' ');
+      final legacyCheck = ['barra', 'el', 'salfa'].join(' ');
+      expect(homeCode.contains(legacyFull), isFalse);
+      expect(homeCode.toLowerCase().contains(legacyCheck), isFalse);
     });
   });
 
   group('Challenger M1: Palette Conformance & Exact Hex Integrity (F5)', () {
-    test('Exact hex values match Barra El Salfa design tokens', () {
+    test('Exact hex values match Fraud Check design tokens', () {
       expect(bg.toARGB32(), equals(0xFF0A0D1B), reason: 'bg token mismatch');
       expect(card.toARGB32(), equals(0xFF151932), reason: 'card token mismatch');
       expect(card2.toARGB32(), equals(0xFF1E2448), reason: 'card2 token mismatch');

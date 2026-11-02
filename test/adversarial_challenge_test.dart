@@ -176,9 +176,9 @@ void main() {
 
       // 1. Unicode / Arabic name
       final firstField = find.byType(TextField).first;
-      await tester.enterText(firstField, 'برا السالفة 🕵️');
+      await tester.enterText(firstField, 'المحقق الذكي 🕵️');
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('برا السالفة 🕵️'), findsOneWidget);
+      expect(find.text('المحقق الذكي 🕵️'), findsOneWidget);
 
       // 2. Extremely long string (120 chars) - stress layout
       final secondField = find.byType(TextField).at(1);
@@ -272,9 +272,9 @@ void main() {
         // Invariant: "1 of 4" category counter must NEVER appear
         expect(find.text('1 of 4'), findsNothing);
 
-        final isFraud = find.text('YOU ARE THE FRAUD!').evaluate().isNotEmpty;
-        final isUndercover = find.text('YOU ARE UNDERCOVER!').evaluate().isNotEmpty;
-        final isSafe = find.text('YOU ARE SAFE').evaluate().isNotEmpty;
+        final isFraud = find.text('YOU ARE THE FRAUD').evaluate().isNotEmpty;
+        final isUndercover = find.text('YOU ARE UNDERCOVER').evaluate().isNotEmpty;
+        final isSafe = find.text('YOU ARE NOT THE FRAUD').evaluate().isNotEmpty;
 
         if (isFraud) fraudCount++;
         if (isUndercover) undercoverCount++;
@@ -308,9 +308,9 @@ void main() {
 
         expect(find.text('1 of 4'), findsNothing);
 
-        final isFraud = find.text('YOU ARE THE FRAUD!').evaluate().isNotEmpty;
-        final isUndercover = find.text('YOU ARE UNDERCOVER!').evaluate().isNotEmpty;
-        final isSafe = find.text('YOU ARE SAFE').evaluate().isNotEmpty;
+        final isFraud = find.text('YOU ARE THE FRAUD').evaluate().isNotEmpty;
+        final isUndercover = find.text('YOU ARE UNDERCOVER').evaluate().isNotEmpty;
+        final isSafe = find.text('YOU ARE NOT THE FRAUD').evaluate().isNotEmpty;
 
         if (isFraud) fraudCount++;
         if (isUndercover) undercoverCount++;

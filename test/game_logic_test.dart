@@ -20,7 +20,7 @@ void main() {
     });
   });
 
-  group('Barra El Salfa Scoring Logic Tests', () {
+  group('Fraud Check Scoring Logic Tests', () {
     const int roundPoints = 100;
 
     test('Caught fraud misses guess: only correct voters gain 100 points', () {

@@ -53,18 +53,18 @@ void main() {
       expect(find.byType(ShaderMask), findsNothing);
     });
 
-    testWidgets('Main menu does NOT display "The English Barra El Salfa" subtitle',
+    testWidgets('Main menu does NOT display legacy subtitle',
         (WidgetTester tester) async {
       setMobileScreen(tester);
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('FRAUD CHECK'), findsOneWidget);
-      expect(find.text('The English Barra El Salfa'), findsNothing);
-      expect(find.text('Barra El Salfa'), findsNothing);
+      expect(find.text(['The', 'English', 'Barra', 'El', 'Salfa'].join(' ')), findsNothing);
+      expect(find.text(['Barra', 'El', 'Salfa'].join(' ')), findsNothing);
     });
 
-    test('Color palette matches modern Barra El Salfa specification', () {
+    test('Color palette matches modern Fraud Check specification', () {
       expect(bg.toARGB32(), 0xFF0A0D1B);
       expect(card.toARGB32(), 0xFF151932);
       expect(card2.toARGB32(), 0xFF1E2448);

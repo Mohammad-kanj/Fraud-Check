@@ -107,7 +107,6 @@ void main() {
       // Check Turn 1
       expect(tester.takeException(), isNull,
           reason: 'Zero layout overflow on Turn 1 on 320x568');
-      expect(find.text('Question 1 of 4'), findsOneWidget);
 
       // Advance to Turn 2
       final nextBtn = find.text('Next question');
@@ -116,7 +115,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       expect(tester.takeException(), isNull,
           reason: 'Zero layout overflow on Turn 2 on 320x568');
-      expect(find.text('Question 2 of 4'), findsOneWidget);
 
       // Advance to Turn 3
       await tester.ensureVisible(nextBtn);
@@ -125,13 +123,12 @@ void main() {
       expect(tester.takeException(), isNull,
           reason: 'Zero layout overflow on Turn 3 on 320x568');
 
-      // Advance to Turn 4 (Final turn with completion badge)
+      // Advance to Turn 4
       await tester.ensureVisible(nextBtn);
       await tester.tap(nextBtn);
       await tester.pump(const Duration(milliseconds: 100));
       expect(tester.takeException(), isNull,
           reason: 'Zero layout overflow on Turn 4 on 320x568');
-      expect(find.text('✓ All questions asked! Ready to vote.'), findsOneWidget);
     });
 
     testWidgets('ST.1.2: Screen.discuss on Compact Android (360x640) across all question turns',
@@ -148,7 +145,6 @@ void main() {
       for (int i = 1; i <= 5; i++) {
         expect(tester.takeException(), isNull,
             reason: 'Zero layout overflow on Turn $i on 360x640');
-        expect(find.text('Question $i of 5'), findsOneWidget);
 
         if (i < 5) {
           final nextBtn = find.text('Next question');
@@ -158,7 +154,6 @@ void main() {
         }
       }
 
-      expect(find.text('✓ All questions asked! Ready to vote.'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -230,8 +225,8 @@ void main() {
       // Verify names render
       final askerIdx = (state.questionAskers as List<int>)[0];
       final targetIdx = (state.questionTargets as List<int>)[0];
-      expect(find.text(extremeNames[askerIdx]), findsWidgets);
-      expect(find.text(extremeNames[targetIdx]), findsWidgets);
+      expect(find.textContaining(extremeNames[askerIdx]), findsWidgets);
+      expect(find.textContaining(extremeNames[targetIdx]), findsWidgets);
 
       // Cycle through turns
       for (int i = 0; i < 3; i++) {
@@ -272,7 +267,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(tester.takeException(), isNull,
           reason: 'Arabic emoji name on reveal front card must not overflow at 320px');
-      expect(find.textContaining('THE STORY'), findsOneWidget);
+      expect(find.textContaining('YOU ARE'), findsOneWidget);
     });
   });
 
@@ -302,18 +297,16 @@ void main() {
       }
       await tester.pump(const Duration(milliseconds: 100));
 
-      // State questionTurnIdx must be clamped within [0, 4]
-      expect(state.questionTurnIdx, inInclusiveRange(0, 4));
+      // With infinite questioning, questionTurnIdx advances smoothly without throwing
+      expect(state.questionTurnIdx, greaterThanOrEqualTo(5));
       expect(tester.takeException(), isNull);
 
-      // Rapidly tap "Previous question" 10 times
-      for (int i = 0; i < 10; i++) {
+      // Rapidly tap "Previous question" until back at 0
+      while (find.text('Previous question').evaluate().isNotEmpty) {
         final prevFinder = find.text('Previous question');
-        if (prevFinder.evaluate().isNotEmpty) {
-          await tester.ensureVisible(prevFinder);
-          await tester.tap(prevFinder);
-          await tester.pump(const Duration(milliseconds: 10));
-        }
+        await tester.ensureVisible(prevFinder);
+        await tester.tap(prevFinder);
+        await tester.pump(const Duration(milliseconds: 10));
       }
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -338,7 +331,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       expect(tester.takeException(), isNull,
           reason: 'Negative questionTurnIdx must be defensively clamped');
-      expect(find.text('Question 1 of 4'), findsOneWidget);
 
       // Inject wildly large questionTurnIdx
       state.setState(() {
@@ -347,8 +339,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       expect(tester.takeException(), isNull,
           reason: 'Excessive questionTurnIdx must be defensively clamped');
-      expect(find.text('Question 4 of 4'), findsOneWidget);
-      expect(find.text('✓ All questions asked! Ready to vote.'), findsOneWidget);
     });
   });
 
@@ -371,7 +361,6 @@ void main() {
         // Verify fresh questioning state: questionTurnIdx == 0
         expect(state.questionTurnIdx, equals(0),
             reason: 'Round $round questionTurnIdx must start at 0');
-        expect(find.text('Question 1 of 4'), findsOneWidget);
 
         // Advance to mid turn
         final nextBtn = find.text('Next question');
@@ -379,10 +368,9 @@ void main() {
         await tester.tap(nextBtn);
         await tester.pump(const Duration(milliseconds: 50));
         expect(state.questionTurnIdx, equals(1));
-        expect(find.text('Question 2 of 4'), findsOneWidget);
 
         // Jump to voting
-        final voteBtn = find.text('Vote: who is the fraud?');
+        final voteBtn = find.text('Vote');
         await tester.ensureVisible(voteBtn);
         await tester.tap(voteBtn);
         await tester.pump(const Duration(milliseconds: 50));
@@ -409,7 +397,7 @@ void main() {
           }
           await tester.pump(const Duration(milliseconds: 50));
 
-          final confirmBtn = find.textContaining('Confirm vote');
+          final confirmBtn = find.text('Vote');
           await tester.ensureVisible(confirmBtn);
           await tester.tap(confirmBtn);
           await tester.pump(const Duration(milliseconds: 50));
@@ -433,10 +421,21 @@ void main() {
         expect(find.text('The players in the know win!'), findsOneWidget);
 
         if (round < 3) {
-          // Tap "Start a new round"
-          final newRoundBtn = find.text('Start a new round');
-          await tester.ensureVisible(newRoundBtn);
-          await tester.tap(newRoundBtn);
+          // Tap "Continue"
+          final continueBtn = find.text('Continue');
+          await tester.ensureVisible(continueBtn);
+          await tester.tap(continueBtn);
+          await tester.pump(const Duration(milliseconds: 100));
+
+          expect(state.screen.toString(), contains('category'));
+          final catBtn = find.text('Food');
+          await tester.ensureVisible(catBtn);
+          await tester.tap(catBtn);
+          await tester.pump(const Duration(milliseconds: 100));
+
+          final startRoundBtn = find.text('Start round');
+          await tester.ensureVisible(startRoundBtn);
+          await tester.tap(startRoundBtn);
           await tester.pump(const Duration(milliseconds: 100));
         }
       }

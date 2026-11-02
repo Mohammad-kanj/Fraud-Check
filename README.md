@@ -1,6 +1,6 @@
 # Fraud Check — Flutter app
 
-A genuine mobile app version of Fraud Check (the English برا السالفة game).
+A genuine mobile app version of Fraud Check — the pass-and-play party game of deception.
 One phone, 3–10 players, no login, no internet, offline party gameplay.
 
 ## What is in this version (v1.2.0)
@@ -13,7 +13,7 @@ One phone, 3–10 players, no login, no internet, offline party gameplay.
 - **Main Menu Setup Flow (Option C):**
   - Mode selection is integrated into the setup flow directly from the **Main Menu** (Play $\rightarrow$ Select Mode $\rightarrow$ Pick Category $\rightarrow$ Players).
   - The in-game three-dot options menu (`showPassOptions`) during card passing remains clean and restricted strictly to round management (`Restart round`, `Change category`, `Change players`, `Back to main menu`).
-- **Authentic Barra El Salfa Scoring (+100 Party Points):**
+- **Party Scoring (+100 Points):**
   - **Caught Fraud misses guess:** Every player who personally voted for the caught fraud earns **+100 points**! Players who voted for an innocent player receive 0 points.
   - **Fraud Escapes or Guesses Right:** The fraud(s) earn **+100 points**! Safe players receive 0 points.
   - **Undercover Agent:** Earns **+100 points** if they vote for the fraud or survive unexposed.
@@ -34,7 +34,7 @@ One phone, 3–10 players, no login, no internet, offline party gameplay.
 3. **Discuss:** Players take turns asking questions and giving clues without saying their secret word.
 4. **Vote:** Each player, one at a time and in private, votes for someone else.
 5. **Last chance:** If a fraud is caught by majority vote (> 50%), they get 4 word options from the category to guess from. A correct guess steals the round!
-6. **Scoring:** Points are awarded using authentic *Barra El Salfa* rules (+100 party points per correct vote or fraud escape).
+6. **Scoring:** Points are awarded using Fraud Check party rules (+100 points per correct vote or fraud escape).
 7. Session scores are tracked on the Leaderboard across rounds.
 
 ## Adding or Editing Game Modes in Code

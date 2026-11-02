@@ -8,9 +8,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'categories.dart';
 
 // Fraud Check — pass-and-play party game, one phone, 3–10 players.
-// Inspired by "برا السالفة" (Barra El Salfa) — the English mobile edition.
+// Pass-and-play party game — the English mobile edition.
 // Modes: Classic (1 Fraud), Two Frauds (2 Frauds), Undercover (1 Fraud + 1 Undercover).
-// Authentic Barra El Salfa scoring: 100 party points awarded to players who correctly vote for caught frauds.
+// Scoring rules: 100 party points awarded to players who correctly vote for caught frauds.
 // No login, no internet, no storage: scores and used words live only for this session.
 
 // ---------- Colours ----------
@@ -27,7 +27,7 @@ const ink = Color(0xFFF8FAFC);
 const muted = Color(0xFF94A3B8);
 const purple = Color(0xFF8B5CF6);
 
-// Barra El Salfa party points
+// Fraud Check party points
 const int roundPoints = 100;
 
 // ---------- Game Modes (Configurable in code) ----------
@@ -90,12 +90,21 @@ const List<GameMode> availableGameModes = [
 // missing or playback fails on a device.
 class Sound {
   static bool enabled = true;
+  static double volume = 0.8;
   static final AudioPlayer _player = AudioPlayer();
 
+  static Future<void> setVolume(double val) async {
+    volume = val.clamp(0.0, 1.0);
+    try {
+      await _player.setVolume(volume);
+    } catch (_) {}
+  }
+
   static Future<void> play(String name) async {
-    if (!enabled) return;
+    if (!enabled || volume <= 0.0) return;
     try {
       await _player.stop();
+      await _player.setVolume(volume);
       await _player.play(AssetSource('sounds/$name.wav'));
     } catch (_) {
       // Sound is a bonus, never a blocker.
@@ -136,9 +145,11 @@ class FraudCheckApp extends StatelessWidget {
     return MaterialApp(
       title: 'Fraud Check',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
+      theme: ThemeData(
+        brightness: Brightness.dark,
         scaffoldBackgroundColor: bg,
         colorScheme: const ColorScheme.dark(primary: yellow, surface: card),
+        fontFamily: GoogleFonts.archivo().fontFamily,
         textTheme: GoogleFonts.archivoTextTheme(
           ThemeData.dark().textTheme.apply(bodyColor: ink, displayColor: ink),
         ),
@@ -212,8 +223,6 @@ class FilmStripPainter extends CustomPainter {
     const double sprocketW = 5.0;
     const double sprocketH = 7.0;
 
-    final double animOffset = progress * frameWidth;
-
     final stripPaint = Paint()..color = const Color(0xFF13172E);
     final borderPaint = Paint()
       ..color = const Color(0xFF232A52).withValues(alpha: 0.6)
@@ -243,6 +252,12 @@ class FilmStripPainter extends CustomPainter {
       final double bottom = top + stripHeight;
       final stripRect = Rect.fromLTRB(-diagonal, top, diagonal, bottom);
 
+      // Alternating strip scroll direction:
+      // Even strips move forward, odd strips move in the opposite direction.
+      final double stripProgress = s.isEven ? progress : (1.0 - progress);
+      final double stripOffset = stripProgress * frameWidth;
+      final double sprocketOffset = stripProgress * frameWidth;
+
       // 1. Film strip dark ribbon
       canvas.drawRRect(
         RRect.fromRectAndRadius(stripRect, const Radius.circular(2)),
@@ -270,7 +285,7 @@ class FilmStripPainter extends CustomPainter {
       );
 
       // 2. Sprocket perforations on top and bottom rails
-      final double sprocketStart = -diagonal - (animOffset % sprocketSpacing);
+      final double sprocketStart = -diagonal - (sprocketOffset % sprocketSpacing);
       for (double x = sprocketStart; x <= diagonal; x += sprocketSpacing) {
         // Top sprocket
         canvas.drawRRect(
@@ -291,7 +306,7 @@ class FilmStripPainter extends CustomPainter {
       }
 
       // 3. Frames and Question Marks
-      final double frameStart = -diagonal - (animOffset % frameWidth);
+      final double frameStart = -diagonal - (stripOffset % frameWidth);
       for (double x = frameStart; x <= diagonal; x += frameWidth) {
         // Frame divider
         canvas.drawLine(
@@ -344,6 +359,7 @@ class _GamePageState extends State<GamePage> {
   int playerCount = 4;
   List<String> players = ['Player 1', 'Player 2', 'Player 3', 'Player 4'];
   int timerMinutes = 0; // 0 = no timer
+  double brightness = 1.0; // In-app visual overlay brightness (0.2 to 1.0)
   final Map<String, int> scores = {};
   final Set<String> usedWords = {};
 
@@ -372,12 +388,12 @@ class _GamePageState extends State<GamePage> {
   Timer? timer;
   int secondsLeft = 0;
 
-  // Questioning rounds (Feature F14 / Requirement R5)
+  // Questioning rounds
   int questionTurnIdx = 0;
   List<int> questionAskers = [];
   List<int> questionTargets = [];
 
-  // Points awarded this round (Barra El Salfa rule tracking)
+  // Points awarded this round
   Map<int, int> pointsEarnedThisRound = {};
 
   @override
@@ -614,7 +630,7 @@ class _GamePageState extends State<GamePage> {
         Sound.lose();
       } else {
         // Fraud guessed wrong!
-        // Authentic Barra El Salfa scoring:
+        // Scoring rules:
         // Every player who voted for ANY caught fraud earns +100 party points!
         for (int voter = 0; voter < players.length; voter++) {
           if (!fraudIndices.contains(voter)) {
@@ -819,6 +835,15 @@ class _GamePageState extends State<GamePage> {
             ),
           ),
         ),
+        // In-app visual overlay brightness control (dimming/brightening cleanly without device permissions)
+        if (brightness < 1.0)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                color: Colors.black.withValues(alpha: (1.0 - brightness) * 0.75),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -829,12 +854,17 @@ class _GamePageState extends State<GamePage> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Soft party glow behind cutout
+            // High-contrast circular backing disc with layered glow so cutout pops against film strips
             Container(
-              width: size * 0.85,
-              height: size * 0.85,
+              width: size * 0.90,
+              height: size * 0.90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
+                color: const Color(0xFF0E1226).withValues(alpha: 0.88),
+                border: Border.all(
+                  color: yellow.withValues(alpha: 0.28),
+                  width: 1.5,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: yellow.withValues(alpha: 0.30),
@@ -985,20 +1015,34 @@ class _GamePageState extends State<GamePage> {
 
   // ---------- Screens ----------
 
-  // Main menu: Barra El Salfa party hero branding
+  // Main menu: party hero branding
   Widget _home() => Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _logo(),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'FRAUD CHECK',
             textAlign: TextAlign.center,
             style: TextStyle(
+              fontFamily: GoogleFonts.archivo().fontFamily,
               fontSize: 44,
               fontWeight: FontWeight.w900,
-              letterSpacing: 1.2,
+              letterSpacing: 1.5,
               height: 1.05,
+              color: ink,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withValues(alpha: 0.95),
+                  offset: const Offset(0, 4),
+                  blurRadius: 16,
+                ),
+                Shadow(
+                  color: yellow.withValues(alpha: 0.40),
+                  offset: Offset.zero,
+                  blurRadius: 30,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),
@@ -1010,7 +1054,7 @@ class _GamePageState extends State<GamePage> {
               border: Border.all(color: yellow.withValues(alpha: 0.5)),
             ),
             child: const Text(
-              'WHO IS THE IMPOSTER?',
+              'WHO IS THE FRAUD?',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: yellow,
@@ -1452,7 +1496,7 @@ class _GamePageState extends State<GamePage> {
           _title('Settings'),
           const SizedBox(height: 8),
 
-          // Card 1: Sound effects card
+          // Card 1: Sound effects and master audio volume
           _card(
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1481,7 +1525,7 @@ class _GamePageState extends State<GamePage> {
                             ),
                           ),
                           Text(
-                            'Playful arcade sound effects during gameplay',
+                            'Playful arcade sound effects and master volume',
                             style: TextStyle(color: muted, fontSize: 12),
                           ),
                         ],
@@ -1506,11 +1550,60 @@ class _GamePageState extends State<GamePage> {
                     activeThumbColor: yellow,
                   ),
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(
+                      !Sound.enabled || Sound.volume == 0
+                          ? Icons.volume_off_rounded
+                          : (Sound.volume < 0.5 ? Icons.volume_down_rounded : Icons.volume_up_rounded),
+                      color: Sound.enabled ? yellow : muted,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: yellow,
+                          inactiveTrackColor: card2,
+                          thumbColor: yellow,
+                          overlayColor: yellow.withValues(alpha: 0.2),
+                        ),
+                        child: Slider(
+                          value: Sound.volume,
+                          min: 0.0,
+                          max: 1.0,
+                          onChanged: Sound.enabled
+                              ? (v) {
+                                  setState(() => Sound.setVolume(v));
+                                }
+                              : null,
+                          onChangeEnd: (v) {
+                            if (Sound.enabled) Sound.tap();
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 44,
+                      child: Text(
+                        '${(Sound.volume * 100).round()}%',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          color: Sound.enabled ? ink : muted,
+                        ),
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
 
-          // Card 2: Discussion timer card
+          // Card 2: Screen Brightness
           _card(
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1523,142 +1616,65 @@ class _GamePageState extends State<GamePage> {
                         color: card2,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.timer_rounded, color: yellow, size: 22),
+                      child: const Icon(Icons.brightness_6_rounded, color: yellow, size: 22),
                     ),
                     const SizedBox(width: 12),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Discussion timer',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: ink,
-                          ),
-                        ),
-                        Text(
-                          'Time limit for questioning phase',
-                          style: TextStyle(color: muted, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                // Segmented interactive pills (Off/No timer, 2 min, 3 min, 5 min)
-                Row(
-                  children: [
-                    for (final item in [(0, 'No timer'), (2, '2 min'), (3, '3 min'), (5, '5 min')])
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: InkWell(
-                            onTap: () {
-                              Sound.tap();
-                              setState(() => timerMinutes = item.$1);
-                            },
-                            borderRadius: BorderRadius.circular(12),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: timerMinutes == item.$1 ? yellow : card2,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: timerMinutes == item.$1 ? yellow : border,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Text(
-                                item.$2,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: timerMinutes == item.$1
-                                      ? const Color(0xFF1A1400)
-                                      : ink,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Screen Brightness',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: ink,
                             ),
                           ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                _mutedText('The timer is only a guide. You can vote early at any time.'),
-              ],
-            ),
-          ),
-
-          // Card 3: Session data card
-          _card(
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: card2,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.emoji_events_rounded, color: yellow, size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Session Data',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: ink,
+                          Text(
+                            'Adjust in-app visual overlay brightness',
+                            style: TextStyle(color: muted, fontSize: 12),
                           ),
-                        ),
-                        Text(
-                          'Scoreboard & word history',
-                          style: TextStyle(color: muted, fontSize: 12),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 12),
-                _mutedText(
-                  'Scores are tracked across rounds using Barra El Salfa rules (100 party points per correct vote / round). Words do not repeat until a category runs out.',
                 ),
                 const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: const Text('Reset scores and used words'),
-                    onPressed: () {
-                      setState(() {
-                        scores.clear();
-                        usedWords.clear();
-                        for (final p in players) {
-                          scores[p] = 0;
-                        }
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Scores and used words cleared.')),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: red,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                Row(
+                  children: [
+                    const Icon(Icons.brightness_low_rounded, color: muted, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: yellow,
+                          inactiveTrackColor: card2,
+                          thumbColor: yellow,
+                          overlayColor: yellow.withValues(alpha: 0.2),
+                        ),
+                        child: Slider(
+                          value: brightness,
+                          min: 0.2,
+                          max: 1.0,
+                          onChanged: (v) {
+                            setState(() => brightness = v);
+                          },
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.brightness_high_rounded, color: yellow, size: 20),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 44,
+                      child: Text(
+                        '${(brightness * 100).round()}%',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: ink),
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1672,39 +1688,50 @@ class _GamePageState extends State<GamePage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _title('Rules'),
-          _mutedText('Fraud Check — The English Barra El Salfa party game.\n3–10 players and one phone.'),
+          _mutedText('Pass-and-play party game of deception and deduction.\n3–10 players on one device.'),
           const SizedBox(height: 10),
           _card(Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('🎮 Game Modes',
+              const Text('Overview',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
+              const SizedBox(height: 6),
+              const Text(
+                '• One or more players are secret frauds who only know the category.\n\n'
+                '• Everyone else receives the secret word and must deduce who is bluffing.\n\n'
+                '• The fraud\'s objective is to blend in, avoid detection, and guess the secret word.',
+                style: TextStyle(color: muted, height: 1.5),
+              ),
+              const SizedBox(height: 16),
+              const Text('Roles & Objectives',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
               const SizedBox(height: 6),
               const Text(
                 '• Classic (1 Fraud): Exactly one player is the fraud and only knows the category. Everyone else sees the secret word.\n\n'
-                '• Two Frauds: Two players are chosen as frauds! Neither of them knows the secret word. Double the suspicion!\n\n'
-                '• Undercover: One fraud + one undercover agent. The undercover receives a different decoy word from the same category. Both try to blend in!',
+                '• Two Frauds: Two players are chosen as frauds! Neither knows the secret word. Double the suspicion!\n\n'
+                '• Undercover: One fraud + one undercover player. The undercover receives a related decoy word. Both try to blend in!',
                 style: TextStyle(color: muted, height: 1.5),
               ),
               const SizedBox(height: 16),
-              const Text('📱 How the Round Works',
+              const Text('Questioning Phase',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
               const SizedBox(height: 6),
               const Text(
-                '1. Pass the phone: Each player secretly reveals their card in private.\n\n'
+                '1. Pass the phone: Each player secretly reveals their role in private.\n\n'
                 '2. Discuss: Take turns asking smart questions and giving vague clues. Never say your secret word!\n\n'
-                '3. Vote: Every player votes privately for who they suspect is the fraud.\n\n'
-                '4. Last chance: If a fraud is caught by majority vote (> 50%), they get 4 word options. If they guess the secret word, they steal the round!',
+                '3. Infinite rounds: Questioning continues until players are ready to vote.',
                 style: TextStyle(color: muted, height: 1.5),
               ),
               const SizedBox(height: 16),
-              const Text('🏆 Barra El Salfa Scoring (+100 Party Points)',
+              const Text('Voting & Scoring',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
               const SizedBox(height: 6),
               const Text(
-                '• Caught Fraud misses guess: Every player who personally voted for the caught fraud earns +100 points! (Players who voted for an innocent player get 0 points).\n\n'
+                '• Secret Vote: Every player votes privately for who they suspect is the fraud.\n\n'
+                '• Last chance: If a fraud is caught by majority vote (> 50%), they get 4 word options. If they guess the secret word, they steal the round!\n\n'
+                '• Caught Fraud misses guess: Every player who personally voted for the caught fraud earns +100 points!\n\n'
                 '• Fraud Escapes or Guesses Right: The fraud earns +100 points! Safe players get 0 points.\n\n'
-                '• Undercover Agent: Earns +100 points if they vote for the fraud or survive unexposed.',
+                '• Undercover: Earns +100 points if they vote for the fraud or survive unexposed.',
                 style: TextStyle(color: muted, height: 1.5),
               ),
             ],
@@ -1813,41 +1840,56 @@ class _GamePageState extends State<GamePage> {
     final isUndercover = idx == undercoverIndex;
     final last = passIdx == passOrder.length - 1;
 
-    final themeColor = isFraud
-        ? red
-        : isUndercover
-            ? purple
-            : green;
-
-    final bgGradient = isFraud
-        ? const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF4A1020), Color(0xFF220810)],
-          )
-        : isUndercover
-            ? const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF35175C), Color(0xFF190B2E)],
-              )
-            : const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF103D28), Color(0xFF081F14)],
-              );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         passTopBar(),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
+        // Category and Lock Indicator at the top OUTSIDE the content box
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: card2,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: border),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(categoryIcons[roundCat] ?? '📁', style: const TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
+                    Text('Category: $roundCat',
+                        style: const TextStyle(color: yellow, fontSize: 14, fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: card2,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: border),
+                ),
+                child: Icon(
+                  isFraud ? Icons.lock_open_rounded : Icons.lock_rounded,
+                  color: yellow,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
         _revealCard(
           playerIdx: idx,
           isFraud: isFraud,
           isUndercover: isUndercover,
-          themeColor: themeColor,
-          bgGradient: bgGradient,
         ),
         const SizedBox(height: 16),
         _primary(last ? 'Hide and start discussion' : 'Hide and pass on', hideAndPass),
@@ -1859,15 +1901,11 @@ class _GamePageState extends State<GamePage> {
     required int playerIdx,
     required bool isFraud,
     required bool isUndercover,
-    required Color themeColor,
-    required Gradient bgGradient,
   }) {
     final frontCard = _revealCardFront(
       playerIdx: playerIdx,
       isFraud: isFraud,
       isUndercover: isUndercover,
-      themeColor: themeColor,
-      bgGradient: bgGradient,
     );
     final backCard = _revealCardBack(playerIdx);
 
@@ -1954,32 +1992,38 @@ class _GamePageState extends State<GamePage> {
             ),
           ),
           const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: yellow.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: yellow.withValues(alpha: 0.5)),
-            ),
-            child: const Text(
-              'TOP SECRET • سري للغاية',
-              style: TextStyle(
-                color: yellow,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.5,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: yellow.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: yellow.withValues(alpha: 0.5)),
+              ),
+              child: const Text(
+                'TOP SECRET • سري للغاية',
+                style: TextStyle(
+                  color: yellow,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
               ),
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            players[playerIdx],
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              color: ink,
-              letterSpacing: 0.5,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              players[playerIdx],
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                color: ink,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -2002,144 +2046,61 @@ class _GamePageState extends State<GamePage> {
     required int playerIdx,
     required bool isFraud,
     required bool isUndercover,
-    required Color themeColor,
-    required Gradient bgGradient,
   }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 26),
       decoration: BoxDecoration(
-        gradient: bgGradient,
-        border: Border.all(color: themeColor, width: 2.5),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E2448), Color(0xFF0F1326)],
+        ),
+        border: Border.all(color: yellow.withValues(alpha: 0.6), width: 2),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: themeColor.withValues(alpha: 0.42),
-            blurRadius: 32,
-            spreadRadius: 2,
+            color: yellow.withValues(alpha: 0.15),
+            blurRadius: 24,
+            spreadRadius: 1,
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isFraud
-                  ? const Color(0xFF63152A)
-                  : isUndercover
-                      ? const Color(0xFF471F7A)
-                      : const Color(0xFF165236),
-              border: Border.all(color: themeColor, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: themeColor.withValues(alpha: 0.5),
-                  blurRadius: 16,
+          if (isUndercover) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                decoration: BoxDecoration(
+                  color: card2,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: yellow.withValues(alpha: 0.5)),
                 ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              isFraud
-                  ? Icons.theater_comedy_rounded
-                  : isUndercover
-                      ? Icons.visibility_off_rounded
-                      : Icons.shield_rounded,
-              color: Colors.white,
-              size: 36,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-            decoration: BoxDecoration(
-              color: themeColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: themeColor),
-            ),
-            child: Text(
-              isFraud
-                  ? '🎭 IMPOSTER'
-                  : isUndercover
-                      ? '🕵️ UNDERCOVER AGENT'
-                      : '🛡️ INNOCENT / SAFE',
-              style: TextStyle(
-                color: themeColor,
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.1,
+                child: const Text(
+                  '👁️ UNDERCOVER',
+                  style: TextStyle(
+                    color: yellow,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            isFraud
-                ? 'YOU ARE THE FRAUD!'
-                : isUndercover
-                    ? 'YOU ARE UNDERCOVER!'
-                    : 'YOU ARE SAFE',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w900,
-              color: isFraud ? Colors.white : themeColor,
-              letterSpacing: 0.5,
-            ),
-          ),
-          // Authentic Barra El Salfa bilingual role banner
-          Container(
-            margin: const EdgeInsets.only(top: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-            decoration: BoxDecoration(
-              color: themeColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: themeColor.withValues(alpha: 0.6), width: 1.5),
-            ),
+              const SizedBox(height: 12),
+          ],
+          FittedBox(
+            fit: BoxFit.scaleDown,
             child: Text(
               isFraud
-                  ? 'OUTSIDE THE STORY (برا السالفة)'
-                  : isUndercover
-                      ? 'UNDERCOVER (داخل السالفة - كلمة مختلفة)'
-                      : 'INSIDE THE STORY (داخل السالفة)',
+                  ? 'YOU ARE THE FRAUD'
+                  : (isUndercover ? 'YOU ARE UNDERCOVER' : 'YOU ARE NOT THE FRAUD'),
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: themeColor,
-                fontSize: 13,
+              style: const TextStyle(
+                fontSize: 22,
                 fontWeight: FontWeight.w900,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: card2.withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: border),
-            ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    categoryIcons[roundCat] ?? '📁',
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Category: $roundCat',
-                    style: const TextStyle(
-                      color: yellow,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
+                color: ink,
+                letterSpacing: 0.5,
               ),
             ),
           ),
@@ -2149,58 +2110,26 @@ class _GamePageState extends State<GamePage> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFF280B14),
+                color: card2,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: red.withValues(alpha: 0.6),
-                  width: 1.5,
-                ),
+                border: Border.all(color: border),
               ),
-              child: const Column(
-                children: [
-                  Text(
-                    '? ? ?',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 4,
-                      color: red,
-                    ),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    'SECRET WORD UNKNOWN',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: muted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ],
+              child: Text(
+                selectedMode.fraudCount > 1
+                    ? 'There are 2 frauds this round! Listen closely, blend in, and try to deduce the secret word.'
+                    : 'Try to blend in! Listen to clues, pretend you know the word, and deduce it before voting.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: ink, fontSize: 15, fontWeight: FontWeight.w600, height: 1.4),
               ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              selectedMode.fraudCount > 1
-                  ? 'There are 2 frauds this round! Listen closely, blend in, and try to deduce the secret word.'
-                  : 'Blend in! Listen to the clues, pretend you know the word, and deduce it before voting.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: muted, fontSize: 13, height: 1.4),
             ),
           ] else if (isUndercover) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFF210E3A),
+                color: card2,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: purple.withValues(alpha: 0.6),
-                  width: 1.5,
-                ),
+                border: Border.all(color: border),
               ),
               child: Column(
                 children: [
@@ -2219,9 +2148,9 @@ class _GamePageState extends State<GamePage> {
                     roundUndercoverWord,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 36,
+                      fontSize: 34,
                       fontWeight: FontWeight.w900,
-                      height: 1.15,
+                      color: ink,
                     ),
                   ),
                 ],
@@ -2229,7 +2158,7 @@ class _GamePageState extends State<GamePage> {
             ),
             const SizedBox(height: 14),
             const Text(
-              'Your word is slightly different from the safe players. Blend in and help expose the fraud!',
+              'Your word is slightly different from other players. Blend in and help expose the fraud!',
               textAlign: TextAlign.center,
               style: TextStyle(color: muted, fontSize: 13, height: 1.4),
             ),
@@ -2238,12 +2167,9 @@ class _GamePageState extends State<GamePage> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFF0C2B1C),
+                color: card2,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: green.withValues(alpha: 0.6),
-                  width: 1.5,
-                ),
+                border: Border.all(color: border),
               ),
               child: Column(
                 children: [
@@ -2262,10 +2188,9 @@ class _GamePageState extends State<GamePage> {
                     roundWord,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 38,
+                      fontSize: 36,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 1.1,
-                      height: 1.15,
+                      color: ink,
                     ),
                   ),
                 ],
@@ -2291,35 +2216,33 @@ class _GamePageState extends State<GamePage> {
     final List<int> targets = (questionTargets.length == totalQuestions)
         ? questionTargets
         : List.generate(totalQuestions, (i) => (i + 1) % totalQuestions);
-    final currentIdx = questionTurnIdx.clamp(0, totalQuestions - 1);
-    final askerName = players[askers[currentIdx]];
-    final responderName = players[targets[currentIdx]];
-    final bool isLast = currentIdx == totalQuestions - 1;
+
+    // Infinite questioning: cycle modulo totalQuestions
+    final cycleIdx = questionTurnIdx < 0 ? 0 : (questionTurnIdx % totalQuestions);
+    final askerName = players[askers[cycleIdx]];
+    final responderName = players[targets[cycleIdx]];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         _title('Discuss!'),
-        _categoryLabel(roundCat, size: 20),
-        const SizedBox(height: 6),
+        const SizedBox(height: 10),
+
+        // Light box background behind instruction text to prevent background blending
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: card2,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: border),
           ),
-          child: Text(
-            'Mode: ${selectedMode.title}',
-            style: const TextStyle(
-              color: yellow,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
+          child: const Text(
+            'Give clues and ask each other questions. Do not say your secret word!',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w600, height: 1.3),
           ),
         ),
-        const SizedBox(height: 10),
-        _mutedText('Give clues and ask each other questions. Do not say your secret word!'),
         if (timerMinutes > 0) ...[
           const SizedBox(height: 10),
           Container(
@@ -2343,345 +2266,78 @@ class _GamePageState extends State<GamePage> {
             ),
           ),
         ],
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
 
-        // Turn-by-turn Questioning Round Card (Feature F14 / Requirement R5)
+        // Simplified Questioning Display (No counter, no 'Questioning Round', no ASKER/RESPONDER, no emojis)
         _card(
           Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Question Turn Header
-              SizedBox(
-                width: double.infinity,
-                child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: yellow.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: yellow.withValues(alpha: 0.5)),
-                      ),
-                      child: Text(
-                        'Question ${currentIdx + 1} of $totalQuestions',
-                        style: const TextStyle(
-                          color: yellow,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: card2,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: border),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.quiz_rounded, size: 14, color: muted),
-                          SizedBox(width: 4),
-                          Text(
-                            'Questioning Round',
-                            style: TextStyle(
-                              color: muted,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Asker Card with voice icon
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                 decoration: BoxDecoration(
                   color: card2,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: yellow.withValues(alpha: 0.4), width: 1.5),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: yellow.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.record_voice_over_rounded,
-                        color: yellow,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'ASKER',
-                            style: TextStyle(
-                              color: yellow,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            askerName,
-                            style: const TextStyle(
-                              color: ink,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  '$askerName asks $responderName',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: ink,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
-
-              // Directional "asks" connector
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      height: 1,
-                      width: 36,
-                      color: border,
-                    ),
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: card2,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: border),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.arrow_downward_rounded, size: 14, color: yellow),
-                          SizedBox(width: 4),
-                          Text(
-                            'asks',
-                            style: TextStyle(
-                              color: ink,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      height: 1,
-                      width: 36,
-                      color: border,
-                    ),
-                  ],
-                ),
-              ),
-
-              // Responder Card with hearing icon
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: card2,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: green.withValues(alpha: 0.4), width: 1.5),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: green.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.hearing_rounded,
-                        color: green,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'RESPONDER',
-                            style: TextStyle(
-                              color: green,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            responderName,
-                            style: const TextStyle(
-                              color: ink,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Prompt guidance
-              Text(
-                '$askerName asks $responderName a question about the secret word.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: ink,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-
               const SizedBox(height: 16),
 
-              // Navigation Buttons: Next / Previous question
-              if (currentIdx > 0) ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Sound.tap();
-                      if (questionTurnIdx > 0) setState(() => questionTurnIdx--);
-                    },
-                    icon: const Icon(Icons.arrow_back_rounded, size: 16),
-                    label: const Text('Previous question'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: ink,
-                      side: const BorderSide(color: border),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-              ],
-              if (!isLast)
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Sound.tap();
-                      if (questionTurnIdx < totalQuestions - 1) setState(() => questionTurnIdx++);
-                    },
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                    label: const Text('Next question'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: yellow,
-                      foregroundColor: const Color(0xFF1A1400),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                )
-              else
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: green.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: green.withValues(alpha: 0.4)),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check_circle_outline_rounded, size: 16, color: green),
-                      SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          '✓ All questions asked! Ready to vote.',
-                          style: TextStyle(
-                            color: green,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: 14),
-
-              // Turn sequence progress capsules
+              // Navigation Controls: Previous / Next (Infinite questioning support)
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(totalQuestions, (idx) {
-                  final isActive = idx == currentIdx;
-                  final isDone = idx < currentIdx;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: isActive ? 22 : 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: isActive ? yellow : (isDone ? green : border),
-                      borderRadius: BorderRadius.circular(4),
+                children: [
+                  if (questionTurnIdx > 0)
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Sound.tap();
+                          setState(() => questionTurnIdx--);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ink,
+                          side: const BorderSide(color: border),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Previous question', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
                     ),
-                  );
-                }),
+                  if (questionTurnIdx > 0) const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Sound.tap();
+                        setState(() => questionTurnIdx++);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: yellow,
+                        foregroundColor: const Color(0xFF1A1400),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Next question', style: TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
 
-        const SizedBox(height: 14),
-        _primary('Vote: who is the fraud?', startVoting),
+        const SizedBox(height: 16),
+        // Action button labeled 'Vote'
+        _primary('Vote', startVoting),
       ],
     );
   }
@@ -2736,7 +2392,7 @@ class _GamePageState extends State<GamePage> {
             border: Border.all(color: yellow.withValues(alpha: 0.5)),
           ),
           child: Text(
-            '🗳️ Voter: $voter',
+            'Voter: $voter',
             style: const TextStyle(
               color: yellow,
               fontSize: 15,
@@ -2851,9 +2507,7 @@ class _GamePageState extends State<GamePage> {
         }),
         const SizedBox(height: 8),
         _primary(
-          votePick == null
-              ? 'Select a suspect'
-              : 'Confirm vote for ${players[votePick!]}',
+          'Vote',
           votePick == null ? null : confirmIndividualVote,
         ),
       ],
@@ -2901,51 +2555,35 @@ class _GamePageState extends State<GamePage> {
       ..sort((a, b) => b.value.compareTo(a.value));
     final isPlayersWin = fraudCaughtByMajority && !fraudGuessedCorrectly;
     final heroBannerText = isPlayersWin
-        ? '🎉 PLAYERS IN THE KNOW WIN!'
-        : (fraudGuessedCorrectly ? '🎭 THE FRAUD ESCAPED!' : '🎭 THE FRAUD ESCAPED!');
+        ? 'PLAYERS IN THE KNOW WIN!'
+        : 'THE FRAUD ESCAPED!';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // a. Victory/Defeat Hero Banner
+        // a. Victory/Defeat Hero Banner (No emojis)
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
           decoration: BoxDecoration(
-            color: isPlayersWin
-                ? green.withValues(alpha: 0.15)
-                : red.withValues(alpha: 0.15),
+            color: card2,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isPlayersWin
-                  ? green.withValues(alpha: 0.6)
-                  : red.withValues(alpha: 0.6),
+              color: isPlayersWin ? const Color(0xFF10B981) : const Color(0xFFFF3B5C),
               width: 2,
             ),
           ),
           child: Column(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    isPlayersWin
-                        ? Icons.emoji_events_rounded
-                        : Icons.theater_comedy_rounded,
-                    color: isPlayersWin ? green : red,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    heroBannerText,
-                    style: TextStyle(
-                      color: isPlayersWin ? green : red,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                ],
+              Text(
+                heroBannerText,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isPlayersWin ? const Color(0xFF10B981) : const Color(0xFFFF3B5C),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.0,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -2962,299 +2600,188 @@ class _GamePageState extends State<GamePage> {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
 
-        // b. Secret Word Reveal Card with category icon
-        _card(Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: card2,
-                    borderRadius: BorderRadius.circular(8),
+        // b. Polished Summary Section with Visual Depth & Dimensional Card Styling
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF202652), Color(0xFF121630)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: yellow.withValues(alpha: 0.5), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: yellow.withValues(alpha: 0.15),
+                blurRadius: 24,
+                spreadRadius: 1,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Category & Mode Pills
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: card2,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(categoryIcons[roundCat] ?? '📁', style: const TextStyle(fontSize: 14)),
+                        const SizedBox(width: 6),
+                        Text(roundCat, style: const TextStyle(color: yellow, fontSize: 13, fontWeight: FontWeight.w800)),
+                      ],
+                    ),
                   ),
-                  child: Text(
-                    categoryIcons[roundCat] ?? '🎭',
-                    style: const TextStyle(fontSize: 18),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: card2,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: border),
+                    ),
+                    child: Text(
+                      'Mode: ${selectedMode.title}',
+                      style: const TextStyle(color: ink, fontSize: 12, fontWeight: FontWeight.w700),
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Secret Word Hero Display
+              const Text('SECRET WORD',
+                  style: TextStyle(color: muted, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+              const SizedBox(height: 4),
+              Text(
+                roundWord,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: ink, letterSpacing: 0.5),
+              ),
+              const SizedBox(height: 14),
+              // Fraud Pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: card2,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: yellow.withValues(alpha: 0.4)),
                 ),
-                const SizedBox(width: 8),
-                _categoryLabel(roundCat, size: 14),
-                const SizedBox(width: 8),
+                child: Text(
+                  selectedMode.fraudCount > 1
+                      ? 'Frauds: ${fraudIndices.map((i) => players[i]).join(', ')}'
+                      : 'Fraud: ${fraudIndices.map((i) => players[i]).join(', ')}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.w800, color: ink, fontSize: 14),
+                ),
+              ),
+              if (undercoverIndex != null) ...[
+                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: card2,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: border),
                   ),
                   child: Text(
-                    'Mode: ${selectedMode.title}',
-                    style: const TextStyle(
-                      color: yellow,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    'Undercover: ${players[undercoverIndex!]} (Word: "$roundUndercoverWord")',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.w800, color: ink, fontSize: 13),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Secret Word: $roundWord',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: ink),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: red.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: red.withValues(alpha: 0.4)),
-              ),
-              child: Text(
-                selectedMode.fraudCount > 1
-                    ? 'Frauds: ${fraudIndices.map((i) => players[i]).join(', ')}'
-                    : 'Fraud: ${fraudIndices.map((i) => players[i]).join(', ')}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w800, color: red, fontSize: 14),
-              ),
-            ),
-            if (undercoverIndex != null) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: purple.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: purple.withValues(alpha: 0.4)),
-                ),
-                child: Text(
-                  'Undercover: ${players[undercoverIndex!]} (Word: "$roundUndercoverWord")',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w800, color: purple, fontSize: 13),
-                ),
-              ),
             ],
-            if (allVotes.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              const Divider(color: border),
-              const SizedBox(height: 8),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // c. Total Leaderboard with Score Deltas (+N) and NO emojis
+        _card(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               const Text(
-                'Vote Summary',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                'Total Leaderboard',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 6),
-              ...players.map((name) {
-                final idx = players.indexOf(name);
-                final count = voteCounts[idx] ?? 0;
-                final isFraud = fraudIndices.contains(idx);
-                final isUnder = idx == undercoverIndex;
-                final badge = isFraud
-                    ? ' [Fraud]'
-                    : isUnder
-                        ? ' [Undercover]'
-                        : '';
-                return Text(
-                  '$name$badge: $count vote${count == 1 ? '' : 's'}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: count > (players.length / 2) ? red : muted,
-                    fontWeight: count > (players.length / 2)
-                        ? FontWeight.w700
-                        : FontWeight.normal,
+              const SizedBox(height: 12),
+              ...List.generate(sorted.length, (rankIdx) {
+                final entry = sorted[rankIdx];
+                final pIdx = players.indexOf(entry.key);
+                final delta = pIdx != -1 ? (pointsEarnedThisRound[pIdx] ?? 0) : 0;
+                final rankNum = '${rankIdx + 1}.';
+
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: rankIdx < 3 ? card2 : card2.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: rankIdx == 0 ? yellow.withValues(alpha: 0.6) : border,
+                      width: rankIdx == 0 ? 1.5 : 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(rankNum, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: yellow)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          entry.key,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ink),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (delta > 0) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '+$delta',
+                                style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.w900, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                          Text('${entry.value} pts',
+                              style: const TextStyle(color: yellow, fontWeight: FontWeight.w900, fontSize: 14)),
+                        ],
+                      ),
+                    ],
                   ),
                 );
               }),
             ],
-          ],
-        )),
-        const SizedBox(height: 12),
-
-        // c. Round Points (+100 pts) Chips with explanation
-        _card(Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: card2,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.star_rounded, color: yellow, size: 20),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Barra El Salfa Points This Round',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            ...List.generate(players.length, (i) {
-              final pts = pointsEarnedThisRound[i] ?? 0;
-              final voterTarget = playerVotes[i];
-              String reason = '';
-              if (pts > 0) {
-                if (fraudIndices.contains(i)) {
-                  reason = fraudGuessedCorrectly ? 'Guessed the word!' : 'Escaped undetected!';
-                } else if (i == undercoverIndex) {
-                  reason = 'Survived undercover!';
-                } else if (voterTarget != null && caughtFrauds.contains(voterTarget)) {
-                  reason = 'Correctly voted for ${players[voterTarget]}';
-                } else {
-                  reason = 'Round bonus';
-                }
-              } else {
-                if (fraudIndices.contains(i)) {
-                  reason = 'Caught & missed guess';
-                } else if (voterTarget != null) {
-                  reason = 'Voted for ${players[voterTarget]}';
-                } else {
-                  reason = 'No points';
-                }
-              }
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: pts > 0 ? card2 : card2.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: pts > 0 ? green.withValues(alpha: 0.4) : border.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        '${players[i]} ($reason)',
-                        style: TextStyle(
-                          color: pts > 0 ? ink : muted,
-                          fontSize: 13,
-                          fontWeight: pts > 0 ? FontWeight.w700 : FontWeight.normal,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: pts > 0 ? green.withValues(alpha: 0.15) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        pts > 0 ? '+$pts pts' : '0 pts',
-                        style: TextStyle(
-                          color: pts > 0 ? green : muted,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        )),
-        const SizedBox(height: 12),
-
-        // d. Ranked Leaderboard Podium (🥇 1st, 🥈 2nd, 🥉 3rd)
-        _card(Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.leaderboard_rounded, color: yellow, size: 22),
-                SizedBox(width: 8),
-                Text(
-                  'Total Leaderboard',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ...List.generate(sorted.length, (rankIdx) {
-              final entry = sorted[rankIdx];
-              final medal = rankIdx == 0
-                  ? '🥇'
-                  : rankIdx == 1
-                      ? '🥈'
-                      : rankIdx == 2
-                          ? '🥉'
-                          : '${rankIdx + 1}.';
-              final isTop3 = rankIdx < 3;
-              final borderColor = rankIdx == 0
-                  ? yellow
-                  : rankIdx == 1
-                      ? const Color(0xFFC0C0C0)
-                      : rankIdx == 2
-                          ? const Color(0xFFCD7F32)
-                          : border;
-
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isTop3 ? card2 : card2.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isTop3 ? borderColor.withValues(alpha: 0.7) : border,
-                    width: isTop3 ? 1.5 : 1.0,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Text(medal, style: const TextStyle(fontSize: 18)),
-                        const SizedBox(width: 10),
-                        Text(
-                          entry.key,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                            color: ink,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: isTop3 ? yellow.withValues(alpha: 0.15) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${entry.value} pts',
-                        style: TextStyle(
-                          color: isTop3 ? yellow : ink,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        )),
+          ),
+        ),
         const SizedBox(height: 16),
-        _primaryWithIcon('Start a new round', Icons.replay_rounded, () {
-          Sound.start();
-          startRound();
+
+        // d. Continue Button: Preserves cumulative scores and prompts back to category selection
+        _primaryWithIcon('Continue', Icons.arrow_forward_rounded, () {
+          Sound.tap();
+          go(Screen.category);
         }),
         const SizedBox(height: 8),
         _secondary('Return to main menu', () {

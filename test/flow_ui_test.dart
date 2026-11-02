@@ -78,26 +78,23 @@ void main() {
       await tester.tap(find.text('Tap to reveal'));
       await tester.pump(const Duration(milliseconds: 400)); // allow animation to finish
 
-      // R4: "1 of 4" indicator must be removed
+      // "1 of 4" indicator must be removed
       expect(find.text('1 of 4'), findsNothing);
 
       // Category badge with emoji is shown
       expect(find.textContaining('Category: Food'), findsOneWidget);
 
-      // Expressive visual presentation: either Fraud or Safe
-      final isFraud = find.text('YOU ARE THE FRAUD!').evaluate().isNotEmpty;
-      final isSafe = find.text('YOU ARE SAFE').evaluate().isNotEmpty;
+      // Visual presentation: either Fraud or Safe with cohesive lock icon
+      final isFraud = find.text('YOU ARE THE FRAUD').evaluate().isNotEmpty;
+      final isSafe = find.text('YOU ARE NOT THE FRAUD').evaluate().isNotEmpty;
 
       expect(isFraud || isSafe, isTrue);
 
       if (isFraud) {
-        expect(find.text('🎭 IMPOSTER'), findsOneWidget);
-        expect(find.text('SECRET WORD UNKNOWN'), findsOneWidget);
-        expect(find.byIcon(Icons.theater_comedy_rounded), findsOneWidget);
+        expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
       } else {
-        expect(find.text('🛡️ INNOCENT / SAFE'), findsOneWidget);
+        expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
         expect(find.text('YOUR SECRET WORD'), findsOneWidget);
-        expect(find.byIcon(Icons.shield_rounded), findsOneWidget);
       }
     });
   });
@@ -123,7 +120,7 @@ void main() {
       expect(find.text('Discuss!'), findsOneWidget);
 
       // Tap vote button to begin voting
-      await tester.tap(find.text('Vote: who is the fraud?'));
+      await tester.tap(find.text('Vote'));
       await tester.pump(const Duration(milliseconds: 100));
 
       // Stage 1 of vote: Pass the phone to voter
@@ -133,7 +130,7 @@ void main() {
 
       // Now in Stage 2: Who is the fraud?
       expect(find.text('Who is the fraud?'), findsOneWidget);
-      expect(find.textContaining('🗳️ Voter:'), findsOneWidget);
+      expect(find.textContaining('Voter:'), findsOneWidget);
 
       // Check suspect subtitles
       expect(find.textContaining('Suspect #'), findsWidgets);
@@ -152,8 +149,8 @@ void main() {
         expect(st.style!.fontWeight, equals(FontWeight.w900));
       }
 
-      // Initial confirm button state
-      expect(find.text('Select a suspect'), findsOneWidget);
+      // Initial vote button state
+      expect(find.text('Vote'), findsOneWidget);
 
       // Tap first suspect card
       final firstRadio = find.byIcon(Icons.radio_button_unchecked_rounded).first;
@@ -163,8 +160,8 @@ void main() {
       // Should now show checked radio
       expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
 
-      // Confirm button should be dynamically enabled with suspect name
-      expect(find.textContaining('Confirm vote for'), findsOneWidget);
+      // Action button remains strictly labeled 'Vote'
+      expect(find.text('Vote'), findsOneWidget);
     });
   });
 }

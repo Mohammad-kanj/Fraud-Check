@@ -148,10 +148,10 @@ void main() {
   });
 
   // =========================================================================
-  // GROUP 2: UI TURN COUNTER & NAVIGATION CONTROLS (N=3, BOUNDARY MINIMUM)
+  // GROUP 2: SIMPLIFIED QUESTIONING DISPLAY & CONTROLS (N=3, R8)
   // =========================================================================
-  group('Empirical Challenger M3: Group 2 - Turn Counter & Controls (N=3)', () {
-    testWidgets('QR.2.1: Questioning UI correctly renders turn counter, cards, directional arrow, and controls',
+  group('Empirical Challenger M3: Group 2 - Simplified Questioning & Controls (N=3)', () {
+    testWidgets('QR.2.1: Questioning UI correctly renders simple indicator, infinite cycling, and Vote button',
         (WidgetTester tester) async {
       await startRoundWithPlayerCount(tester, targetCount: 3, modeTitle: 'Classic', category: 'Food');
       await passThroughAllPlayers(tester, 3);
@@ -163,93 +163,70 @@ void main() {
       final List<int> targets = (state.questionTargets as List<int>);
       final List<String> players = (state.players as List<String>);
 
-      // =====================================================================
-      // TURN 1: "Question 1 of 3"
-      // =====================================================================
-      expect(find.text('Question 1 of 3'), findsOneWidget);
-      expect(find.text('Questioning Round'), findsOneWidget);
-      expect(find.text('ASKER'), findsOneWidget);
-      expect(find.text('RESPONDER'), findsOneWidget);
-      expect(find.text('asks'), findsOneWidget);
+      // Invariant: No question counter, no "Questioning Round", no ASKER/RESPONDER labels
+      expect(find.text('Question 1 of 3'), findsNothing);
+      expect(find.text('Questioning Round'), findsNothing);
+      expect(find.text('ASKER'), findsNothing);
+      expect(find.text('RESPONDER'), findsNothing);
 
+      // Light box instruction container is present
+      expect(find.text('Give clues and ask each other questions. Do not say your secret word!'), findsOneWidget);
+
+      // TURN 1: Simple indicator
       final asker0 = players[askers[0]];
       final target0 = players[targets[0]];
-      expect(find.text(asker0), findsWidgets);
-      expect(find.text(target0), findsWidgets);
-      expect(find.text('$asker0 asks $target0 a question about the secret word.'), findsOneWidget);
-
-      // Verify Icons
-      expect(find.byIcon(Icons.record_voice_over_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.hearing_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.arrow_downward_rounded), findsOneWidget);
+      expect(find.text('$asker0 asks $target0'), findsOneWidget);
 
       // Controls on turn 1
       expect(find.text('Next question'), findsOneWidget);
       expect(find.text('Previous question'), findsNothing,
           reason: 'Previous question button must not be visible on turn 1');
-      expect(find.text('✓ All questions asked! Ready to vote.'), findsNothing,
-          reason: 'Completion badge must not be visible on turn 1');
 
-      // Bottom voting button is always present
-      expect(find.text('Vote: who is the fraud?'), findsOneWidget);
+      // Bottom voting button is strictly labeled 'Vote'
+      expect(find.text('Vote'), findsOneWidget);
 
-      // =====================================================================
-      // ADVANCE TO TURN 2: "Question 2 of 3"
-      // =====================================================================
+      // ADVANCE TO TURN 2
       await tester.tap(find.text('Next question'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Question 2 of 3'), findsOneWidget);
       final asker1 = players[askers[1]];
       final target1 = players[targets[1]];
-      expect(find.text('$asker1 asks $target1 a question about the secret word.'), findsOneWidget);
-
-      // Both Previous and Next buttons are present on intermediate turn
+      expect(find.text('$asker1 asks $target1'), findsOneWidget);
       expect(find.text('Previous question'), findsOneWidget);
       expect(find.text('Next question'), findsOneWidget);
-      expect(find.text('✓ All questions asked! Ready to vote.'), findsNothing);
 
-      // =====================================================================
-      // ADVANCE TO TURN 3: "Question 3 of 3" (FINAL TURN)
-      // =====================================================================
+      // ADVANCE TO TURN 3
       await tester.tap(find.text('Next question'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Question 3 of 3'), findsOneWidget);
       final asker2 = players[askers[2]];
       final target2 = players[targets[2]];
-      expect(find.text('$asker2 asks $target2 a question about the secret word.'), findsOneWidget);
+      expect(find.text('$asker2 asks $target2'), findsOneWidget);
 
-      // Final turn: Next question is replaced by completion indicator
-      expect(find.text('Next question'), findsNothing,
-          reason: 'Next question must be replaced by completion badge on the final turn');
-      expect(find.text('✓ All questions asked! Ready to vote.'), findsOneWidget,
-          reason: 'Completion badge must appear on the final turn');
-      expect(find.byIcon(Icons.check_circle_outline_rounded), findsOneWidget);
-
-      // Previous question button remains available
+      // Infinite cycling: Next question remains available even on turn 3
+      expect(find.text('Next question'), findsOneWidget);
       expect(find.text('Previous question'), findsOneWidget);
 
-      // =====================================================================
+      // ADVANCE TO TURN 4 (Modulo cycling back to turn 1 pair)
+      await tester.tap(find.text('Next question'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('$asker0 asks $target0'), findsOneWidget);
+
+      // STEP BACK TO TURN 3
+      await tester.tap(find.text('Previous question'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('$asker2 asks $target2'), findsOneWidget);
+
       // STEP BACK TO TURN 2
-      // =====================================================================
       await tester.tap(find.text('Previous question'));
       await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('$asker1 asks $target1'), findsOneWidget);
 
-      expect(find.text('Question 2 of 3'), findsOneWidget);
-      expect(find.text('Next question'), findsOneWidget,
-          reason: 'Next question must reappear when stepping back from the final turn');
-      expect(find.text('✓ All questions asked! Ready to vote.'), findsNothing);
-
-      // =====================================================================
       // STEP BACK TO TURN 1
-      // =====================================================================
       await tester.tap(find.text('Previous question'));
       await tester.pump(const Duration(milliseconds: 100));
-
-      expect(find.text('Question 1 of 3'), findsOneWidget);
-      expect(find.text('Previous question'), findsNothing,
-          reason: 'Previous question must disappear again when returned to turn 1');
+      expect(find.text('$asker0 asks $target0'), findsOneWidget);
+      expect(find.text('Previous question'), findsNothing);
       expect(find.text('Next question'), findsOneWidget);
     });
   });
@@ -275,36 +252,40 @@ void main() {
 
       // Step forward through all 10 questions
       for (int step = 1; step <= 10; step++) {
-        expect(find.text('Question $step of 10'), findsOneWidget);
-
         final currentAsker = players[askers[step - 1]];
         final currentTarget = players[targets[step - 1]];
         expect(currentAsker, isNot(equals(currentTarget)),
             reason: 'Step $step: Asker must differ from Responder');
 
-        expect(find.text('$currentAsker asks $currentTarget a question about the secret word.'), findsOneWidget);
+        expect(find.text('$currentAsker asks $currentTarget'), findsOneWidget);
 
+        if (step > 1) {
+          expect(find.text('Previous question'), findsOneWidget);
+        } else {
+          expect(find.text('Previous question'), findsNothing);
+        }
+
+        // Infinite cycling: Next question is always available
+        expect(find.text('Next question'), findsOneWidget);
         if (step < 10) {
-          expect(find.text('Next question'), findsOneWidget);
           await tester.tap(find.text('Next question'));
           await tester.pump(const Duration(milliseconds: 100));
-        } else {
-          // Final question (step 10)
-          expect(find.text('Next question'), findsNothing);
-          expect(find.text('✓ All questions asked! Ready to vote.'), findsOneWidget);
-          expect(find.text('Previous question'), findsOneWidget);
         }
       }
 
       // Step backward all the way from 10 back to 1
       for (int step = 10; step >= 2; step--) {
-        expect(find.text('Question $step of 10'), findsOneWidget);
+        final currentAsker = players[askers[step - 1]];
+        final currentTarget = players[targets[step - 1]];
+        expect(find.text('$currentAsker asks $currentTarget'), findsOneWidget);
         await tester.tap(find.text('Previous question'));
         await tester.pump(const Duration(milliseconds: 100));
       }
 
-      // Back at Question 1 of 10
-      expect(find.text('Question 1 of 10'), findsOneWidget);
+      // Back at Question 1
+      final firstAsker = players[askers[0]];
+      final firstTarget = players[targets[0]];
+      expect(find.text('$firstAsker asks $firstTarget'), findsOneWidget);
       expect(find.text('Previous question'), findsNothing);
       expect(find.text('Next question'), findsOneWidget);
     });
@@ -319,11 +300,8 @@ void main() {
       await startRoundWithPlayerCount(tester, targetCount: 4, modeTitle: 'Classic', category: 'Food');
       await passThroughAllPlayers(tester, 4);
 
-      // On Question 1 of 4
-      expect(find.text('Question 1 of 4'), findsOneWidget);
-
-      // Tap 'Vote: who is the fraud?' directly
-      await tester.tap(find.text('Vote: who is the fraud?'));
+      // Tap 'Vote' directly
+      await tester.tap(find.text('Vote'));
       await tester.pump(const Duration(milliseconds: 100));
 
       // Successfully transitioned to Screen.vote
@@ -338,13 +316,12 @@ void main() {
       await startRoundWithPlayerCount(tester, targetCount: 4, modeTitle: 'Classic', category: 'Food');
       await passThroughAllPlayers(tester, 4);
 
-      // Advance to Question 2 of 4
+      // Advance to Turn 2
       await tester.tap(find.text('Next question'));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Question 2 of 4'), findsOneWidget);
 
-      // Tap 'Vote: who is the fraud?'
-      await tester.tap(find.text('Vote: who is the fraud?'));
+      // Tap 'Vote'
+      await tester.tap(find.text('Vote'));
       await tester.pump(const Duration(milliseconds: 100));
 
       final dynamic state = tester.state(find.byType(GamePage));
@@ -353,21 +330,19 @@ void main() {
       expect(find.text('Vote 1 of 4'), findsOneWidget);
     });
 
-    testWidgets('QR.4.3: Voting transition is operable after completion badge on final turn',
+    testWidgets('QR.4.3: Voting transition is operable on later turns',
         (WidgetTester tester) async {
       await startRoundWithPlayerCount(tester, targetCount: 4, modeTitle: 'Classic', category: 'Food');
       await passThroughAllPlayers(tester, 4);
 
-      // Step to final turn (Question 4 of 4)
+      // Step forward 3 turns
       for (int i = 0; i < 3; i++) {
         await tester.tap(find.text('Next question'));
         await tester.pump(const Duration(milliseconds: 100));
       }
-      expect(find.text('Question 4 of 4'), findsOneWidget);
-      expect(find.text('✓ All questions asked! Ready to vote.'), findsOneWidget);
 
-      // Tap 'Vote: who is the fraud?'
-      await tester.tap(find.text('Vote: who is the fraud?'));
+      // Tap 'Vote'
+      await tester.tap(find.text('Vote'));
       await tester.pump(const Duration(milliseconds: 100));
 
       final dynamic state = tester.state(find.byType(GamePage));
@@ -387,13 +362,9 @@ void main() {
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
-      // 1. Set discussion timer to 2 minutes in Settings
-      await tester.tap(find.text('Settings'));
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(find.text('2 min'));
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(find.text('Back to main menu'));
-      await tester.pump(const Duration(milliseconds: 100));
+      // 1. Set discussion timer to 2 minutes directly on state
+      final dynamic appState = tester.state(find.byType(GamePage));
+      appState.timerMinutes = 2;
 
       // 2. Start game
       await tester.tap(find.text('Play'));
@@ -420,13 +391,12 @@ void main() {
       // Advance 1 question
       await tester.tap(find.text('Next question'));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Question 2 of 4'), findsOneWidget);
 
       // Verify timer is still active
       expect(state.timer.isActive, isTrue);
 
-      // 5. Tap 'Vote: who is the fraud?' to transition to voting
-      await tester.tap(find.text('Vote: who is the fraud?'));
+      // 5. Tap 'Vote' to transition to voting
+      await tester.tap(find.text('Vote'));
       await tester.pump(const Duration(milliseconds: 100));
 
       // 6. Verify transition and timer cancellation
@@ -473,10 +443,9 @@ void main() {
       // Questioning controls still function smoothly
       await tester.tap(find.text('Next question'));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Question 2 of 4'), findsOneWidget);
 
       // Voting button still functions smoothly
-      await tester.tap(find.text('Vote: who is the fraud?'));
+      await tester.tap(find.text('Vote'));
       await tester.pump(const Duration(milliseconds: 100));
       expect(state.screen.toString(), contains('vote'));
     });
@@ -505,24 +474,18 @@ void main() {
       await passThroughAllPlayers(tester, 4);
 
       // Verify questioning cards render without layout crashes
-      expect(find.text('Question 1 of 4'), findsOneWidget);
-      expect(find.text('ASKER'), findsOneWidget);
-      expect(find.text('RESPONDER'), findsOneWidget);
-
       final dynamic state = tester.state(find.byType(GamePage));
       final int firstAskerIdx = (state.questionAskers as List<int>)[0];
       final int firstTargetIdx = (state.questionTargets as List<int>)[0];
 
-      expect(find.text(customNames[firstAskerIdx]), findsWidgets);
-      expect(find.text(customNames[firstTargetIdx]), findsWidgets);
+      expect(find.text('${customNames[firstAskerIdx]} asks ${customNames[firstTargetIdx]}'), findsOneWidget);
 
-      // Tap through all 4 turns to verify no overflow exceptions occur with long Arabic names
+      // Tap through turns to verify no overflow exceptions occur with long Arabic names
       for (int i = 0; i < 3; i++) {
         await tester.tap(find.text('Next question'));
         await tester.pump(const Duration(milliseconds: 50));
       }
-      expect(find.text('Question 4 of 4'), findsOneWidget);
-      expect(find.text('✓ All questions asked! Ready to vote.'), findsOneWidget);
+      expect(find.text('Next question'), findsOneWidget);
     });
 
     testWidgets('QR.6.2: Questioning rounds operate identically in Two Frauds mode (5 players)',
@@ -532,25 +495,24 @@ void main() {
 
       final dynamic state = tester.state(find.byType(GamePage));
       expect(state.screen.toString(), contains('discuss'));
-      expect(find.text('Question 1 of 5'), findsOneWidget);
 
       final List<int> askers = (state.questionAskers as List<int>);
       final List<int> targets = (state.questionTargets as List<int>);
       expect(askers.length, equals(5));
       expect(targets.length, equals(5));
+      expect(find.text('${state.players[askers[0]]} asks ${state.players[targets[0]]}'), findsOneWidget);
 
       // Verify Asker != Responder across all 5 turns
       for (int t = 0; t < 5; t++) {
         expect(askers[t], isNot(equals(targets[t])));
       }
 
-      // Step to final turn
+      // Step to final turn and beyond (infinite cycling)
       for (int i = 0; i < 4; i++) {
         await tester.tap(find.text('Next question'));
         await tester.pump(const Duration(milliseconds: 50));
       }
-      expect(find.text('Question 5 of 5'), findsOneWidget);
-      expect(find.text('✓ All questions asked! Ready to vote.'), findsOneWidget);
+      expect(find.text('Next question'), findsOneWidget);
     });
 
     testWidgets('QR.6.3: Multi-round questioning state isolation resets cleanly on subsequent round',
@@ -563,10 +525,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       await tester.tap(find.text('Next question'));
       await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('Question 3 of 4'), findsOneWidget);
 
       // Proceed to vote
-      await tester.tap(find.text('Vote: who is the fraud?'));
+      await tester.tap(find.text('Vote'));
       await tester.pump(const Duration(milliseconds: 50));
 
       final dynamic state = tester.state(find.byType(GamePage));
@@ -587,7 +548,7 @@ void main() {
         }
         await tester.pump(const Duration(milliseconds: 50));
 
-        await tester.tap(find.textContaining('Confirm vote'));
+        await tester.tap(find.text('Vote'));
         await tester.pump(const Duration(milliseconds: 50));
       }
 
@@ -602,17 +563,22 @@ void main() {
 
       // Now on Result screen
       expect(find.text('The players in the know win!'), findsOneWidget);
-      expect(find.text('Start a new round'), findsOneWidget);
+      expect(find.text('Continue'), findsOneWidget);
 
-      // Start new round
-      await tester.tap(find.text('Start a new round'));
+      // Continue to next round (category selection)
+      await tester.tap(find.text('Continue'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(state.screen.toString(), contains('category'));
+      await tester.tap(find.text('Food'));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.text('Start round'));
       await tester.pump(const Duration(milliseconds: 100));
 
       // Pass reveal for Round 2
       await passThroughAllPlayers(tester, 4);
 
-      // Round 2 discussion: questionTurnIdx must be reset to 0 ("Question 1 of 4")
-      expect(find.text('Question 1 of 4'), findsOneWidget);
+      // Round 2 discussion: questionTurnIdx must be reset to 0
       expect(state.questionTurnIdx, equals(0),
           reason: 'questionTurnIdx must cleanly reset to 0 in a new round');
       expect(find.text('Next question'), findsOneWidget);
@@ -634,24 +600,16 @@ void main() {
       });
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Defensive fallback must engage: Question 1 of 4 rendered cleanly
-      expect(find.text('Question 1 of 4'), findsOneWidget);
-      expect(find.text('Player 1 asks Player 2 a question about the secret word.'), findsOneWidget);
-
-      // Verify Asker != Responder under fallback
-      expect(find.text('ASKER'), findsOneWidget);
-      expect(find.text('RESPONDER'), findsOneWidget);
-      expect(find.text('Player 1'), findsWidgets);
-      expect(find.text('Player 2'), findsWidgets);
+      // Defensive fallback must engage: Player 1 asks Player 2 rendered cleanly
+      expect(find.text('Player 1 asks Player 2'), findsOneWidget);
 
       // Verify navigation still functions cleanly under fallback
       await tester.tap(find.text('Next question'));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Question 2 of 4'), findsOneWidget);
-      expect(find.text('Player 2 asks Player 3 a question about the secret word.'), findsOneWidget);
+      expect(find.text('Player 2 asks Player 3'), findsOneWidget);
 
       // Verify voting transition works cleanly
-      await tester.tap(find.text('Vote: who is the fraud?'));
+      await tester.tap(find.text('Vote'));
       await tester.pump(const Duration(milliseconds: 100));
       expect(state.screen.toString(), contains('vote'));
     });

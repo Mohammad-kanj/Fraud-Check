@@ -94,7 +94,7 @@ void main() {
 
   /// Helper to step from discussion to voting
   Future<void> proceedToVoting(WidgetTester tester) async {
-    final votePrompt = find.text('Vote: who is the fraud?');
+    final votePrompt = find.text('Vote');
     expect(votePrompt, findsOneWidget);
     await tester.ensureVisible(votePrompt);
     await tester.tap(votePrompt);
@@ -313,7 +313,7 @@ void main() {
         await tester.tap(suspects.first);
         await tester.pump(const Duration(milliseconds: 100));
 
-        await tester.tap(find.textContaining('Confirm vote'));
+        await tester.tap(find.text('Vote'));
         await tester.pump(const Duration(milliseconds: 100));
       }
 
@@ -359,7 +359,9 @@ void main() {
       await passThroughAllReveals(tester, 4);
 
       expect(find.text('Discuss!'), findsOneWidget);
-      expect(find.text('Question 1 of 4'), findsOneWidget);
+
+      final dynamic state = tester.state(find.byType(GamePage));
+      expect(state.questionTurnIdx, equals(0));
 
       // Rapidly tap Next question 10 times
       for (int i = 0; i < 10; i++) {
@@ -369,18 +371,15 @@ void main() {
           await tester.pump(const Duration(milliseconds: 20));
         }
       }
-      expect(find.text('Question 4 of 4'), findsOneWidget);
-      expect(find.textContaining('All questions asked'), findsOneWidget);
+      expect(state.questionTurnIdx, greaterThanOrEqualTo(5));
 
-      // Rapidly tap Previous question 10 times
-      for (int i = 0; i < 10; i++) {
+      // Rapidly tap Previous question until back at 0
+      while (find.text('Previous question').evaluate().isNotEmpty) {
         final prevBtn = find.text('Previous question');
-        if (prevBtn.evaluate().isNotEmpty) {
-          await tester.tap(prevBtn);
-          await tester.pump(const Duration(milliseconds: 20));
-        }
+        await tester.tap(prevBtn);
+        await tester.pump(const Duration(milliseconds: 20));
       }
-      expect(find.text('Question 1 of 4'), findsOneWidget);
+      expect(state.questionTurnIdx, equals(0));
       expect(tester.takeException(), isNull);
     });
 
@@ -424,7 +423,7 @@ void main() {
         final targetIdx = (v + 1) % 3;
         await tester.tap(find.text(players[targetIdx]));
         await tester.pump(const Duration(milliseconds: 100));
-        await tester.tap(find.textContaining('Confirm vote'));
+        await tester.tap(find.text('Vote'));
         await tester.pump(const Duration(milliseconds: 100));
       }
 
@@ -437,14 +436,14 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
       }
 
-      expect(find.text('Start a new round'), findsOneWidget);
-      final replayBtn = find.text('Start a new round');
+      expect(find.text('Continue'), findsOneWidget);
+      final replayBtn = find.text('Continue');
       await tester.tap(replayBtn);
       await tester.tap(replayBtn, warnIfMissed: false);
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Lands cleanly on Pass screen of new round
-      expect(find.text('Pass the phone'), findsOneWidget);
+      // Lands on category screen
+      expect(state.screen.toString(), contains('category'));
       expect(tester.takeException(), isNull);
     });
   });
@@ -459,13 +458,9 @@ void main() {
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Settings -> No timer
-      await tester.tap(find.text('Settings'));
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(find.text('No timer'));
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(find.text('Back to main menu'));
-      await tester.pump(const Duration(milliseconds: 100));
+      // Configure timerMinutes = 0
+      final dynamic appState = tester.state(find.byType(GamePage));
+      appState.timerMinutes = 0;
 
       await tester.tap(find.text('Play'));
       await tester.pump(const Duration(milliseconds: 100));
@@ -491,13 +486,9 @@ void main() {
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Settings -> 2 min timer
-      await tester.tap(find.text('Settings'));
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(find.text('2 min'));
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(find.text('Back to main menu'));
-      await tester.pump(const Duration(milliseconds: 100));
+      // Configure timerMinutes = 2
+      final dynamic appState = tester.state(find.byType(GamePage));
+      appState.timerMinutes = 2;
 
       await tester.tap(find.text('Play'));
       await tester.pump(const Duration(milliseconds: 100));
@@ -532,13 +523,9 @@ void main() {
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Settings -> 3 min timer
-      await tester.tap(find.text('Settings'));
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(find.text('3 min'));
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(find.text('Back to main menu'));
-      await tester.pump(const Duration(milliseconds: 100));
+      // Configure timerMinutes = 3
+      final dynamic appState = tester.state(find.byType(GamePage));
+      appState.timerMinutes = 3;
 
       await tester.tap(find.text('Play'));
       await tester.pump(const Duration(milliseconds: 100));
@@ -653,7 +640,7 @@ void main() {
   // =========================================================================
   // GROUP 6: VOTING MAJORITY LOGIC & SCORING HARDENING
   // =========================================================================
-  group('Group 6: Voting Majority Logic & Barra El Salfa Scoring Hardening', () {
+  group('Group 6: Voting Majority Logic & Fraud Check Scoring Hardening', () {
     testWidgets('ADV-S1: Exact 50% vote threshold in 4 players (2 votes) does NOT catch fraud',
         (WidgetTester tester) async {
       await setupAndStartRound(tester, modeTitle: 'Classic', category: 'Food', targetPlayers: 4);
@@ -687,7 +674,7 @@ void main() {
 
         await tester.tap(find.text(players[voteFor]));
         await tester.pump(const Duration(milliseconds: 100));
-        await tester.tap(find.textContaining('Confirm vote'));
+        await tester.tap(find.text('Vote'));
         await tester.pump(const Duration(milliseconds: 100));
       }
 
@@ -695,7 +682,7 @@ void main() {
       expect(find.text('The fraud wins!'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       expect(pointsEarned[fraudIdx], equals(100),
-          reason: 'Escaping fraud with <= 50% votes must earn 100 Barra El Salfa points');
+          reason: 'Escaping fraud with <= 50% votes must earn 100 points');
     });
 
     testWidgets('ADV-S2: Caught fraud guesses secret word correctly and steals the round',
@@ -722,7 +709,7 @@ void main() {
           await tester.tap(find.text(players[fraudIdx]));
         }
         await tester.pump(const Duration(milliseconds: 100));
-        await tester.tap(find.textContaining('Confirm vote'));
+        await tester.tap(find.text('Vote'));
         await tester.pump(const Duration(milliseconds: 100));
       }
 
@@ -774,7 +761,7 @@ void main() {
           await tester.tap(find.text(players[caughtF]));
         }
         await tester.pump(const Duration(milliseconds: 100));
-        await tester.tap(find.textContaining('Confirm vote'));
+        await tester.tap(find.text('Vote'));
         await tester.pump(const Duration(milliseconds: 100));
       }
 

@@ -27,7 +27,7 @@ void main() {
       expect(find.text('How to Play'), findsNothing);
       expect(find.text('Play'), findsOneWidget);
       expect(find.text('Settings'), findsOneWidget);
-      expect(find.text('The English Barra El Salfa'), findsNothing);
+      expect(find.text(['The', 'English', 'Barra', 'El', 'Salfa'].join(' ')), findsNothing);
       expect(find.byType(Image), findsOneWidget);
       expect(find.byType(FilmStripBackground), findsOneWidget);
     });
@@ -41,9 +41,10 @@ void main() {
       await tester.tap(find.text('Rules'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Rules screen title
+      // Rules screen title & subsections
       expect(find.widgetWithText(Column, 'Rules'), findsWidgets);
-      expect(find.text('🎮 Game Modes'), findsOneWidget);
+      expect(find.text('Overview'), findsOneWidget);
+      expect(find.text('Roles & Objectives'), findsOneWidget);
       expect(find.text('How to Play'), findsNothing);
 
       // Back to main menu

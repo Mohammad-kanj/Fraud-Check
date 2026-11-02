@@ -84,7 +84,8 @@ void main() {
       // 4. Test Settings navigation
       await tester.tap(settingsFinder);
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Discussion timer'), findsOneWidget);
+      expect(find.text('Audio Feedback'), findsOneWidget);
+      expect(find.text('Screen Brightness'), findsOneWidget);
 
       // Return to main menu
       await tester.tap(find.text('Back to main menu'));
@@ -93,17 +94,17 @@ void main() {
       // 5. Test Rules navigation
       await tester.tap(find.text('Rules'));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('🎮 Game Modes'), findsOneWidget);
+      expect(find.text('Roles & Objectives'), findsOneWidget);
     });
 
-    testWidgets('MM.3: Arcade tagline badge "WHO IS THE IMPOSTER?" renders with rounded gold pill styling',
+    testWidgets('MM.3: Arcade tagline badge "WHO IS THE FRAUD?" renders with rounded gold pill styling',
         (WidgetTester tester) async {
       setViewport(tester);
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
-      final badgeTextFinder = find.text('WHO IS THE IMPOSTER?');
-      expect(badgeTextFinder, findsOneWidget, reason: 'Tagline badge "WHO IS THE IMPOSTER?" must be present');
+      final badgeTextFinder = find.text('WHO IS THE FRAUD?');
+      expect(badgeTextFinder, findsOneWidget, reason: 'Tagline badge "WHO IS THE FRAUD?" must be present');
 
       // Verify text style
       final textWidget = tester.widget<Text>(badgeTextFinder);
@@ -120,25 +121,28 @@ void main() {
       expect(boxDeco?.border, isNotNull);
     });
 
-    testWidgets('MM.4: Strict absence: "The English Barra El Salfa" and variations do not exist on Main Menu',
+    testWidgets('MM.4: Strict absence: legacy phrases do not exist on Main Menu',
         (WidgetTester tester) async {
       setViewport(tester);
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
+
+      final legacyFull = ['the', 'english', 'barra', 'el', 'salfa'].join(' ');
+      final legacyShort = ['barra', 'el', 'salfa'].join(' ');
 
       // Inspect every Text widget rendered on the screen
       final textWidgets = tester.widgetList<Text>(find.byType(Text));
       for (final t in textWidgets) {
         final textData = (t.data ?? '').toLowerCase();
         expect(
-          textData.contains('the english barra el salfa'),
+          textData.contains(legacyFull),
           isFalse,
-          reason: 'Main menu contains forbidden English subtitle: "${t.data}"',
+          reason: 'Main menu contains forbidden legacy subtitle: "${t.data}"',
         );
         expect(
-          textData.contains('barra el salfa'),
+          textData.contains(legacyShort),
           isFalse,
-          reason: 'Main menu should not contain English "Barra el salfa" text: "${t.data}"',
+          reason: 'Main menu should not contain legacy text: "${t.data}"',
         );
       }
     });
@@ -166,7 +170,7 @@ void main() {
         expect(find.text('Play'), findsOneWidget);
         expect(find.text('Settings'), findsOneWidget);
         expect(find.text('Rules'), findsOneWidget);
-        expect(find.text('WHO IS THE IMPOSTER?'), findsOneWidget);
+        expect(find.text('WHO IS THE FRAUD?'), findsOneWidget);
       }
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
@@ -185,13 +189,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     }
 
-    testWidgets('SET.1: Audio Feedback card renders volume icon, subtitle, and toggleable SwitchListTile',
+    testWidgets('SET.1: Audio Feedback card renders volume icon, subtitle, toggleable SwitchListTile, and volume Slider',
         (WidgetTester tester) async {
       await navigateToSettings(tester);
 
-      expect(find.byIcon(Icons.volume_up_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.volume_up_rounded), findsWidgets);
       expect(find.text('Audio Feedback'), findsOneWidget);
-      expect(find.text('Playful arcade sound effects during gameplay'), findsOneWidget);
+      expect(find.text('Playful arcade sound effects and master volume'), findsOneWidget);
 
       final switchFinder = find.widgetWithText(SwitchListTile, 'Sound effects');
       expect(switchFinder, findsOneWidget);
@@ -211,96 +215,29 @@ void main() {
       expect(Sound.enabled, isFalse, reason: 'Tapping toggle when true must set Sound.enabled to false');
     });
 
-    testWidgets('SET.2: Discussion timer card renders segmented interactive pills (No timer/Off, 2 min, 3 min, 5 min)',
+    testWidgets('SET.2: Discussion timer card removed, replaced by in-app Screen Brightness slider',
         (WidgetTester tester) async {
       await navigateToSettings(tester);
 
-      expect(find.byIcon(Icons.timer_rounded), findsOneWidget);
-      expect(find.text('Discussion timer'), findsOneWidget);
+      // Verify discussion timer is absent
+      expect(find.byIcon(Icons.timer_rounded), findsNothing);
+      expect(find.text('Discussion timer'), findsNothing);
 
-      // Verify all 4 pill options exist
-      final pillLabels = ['No timer', '2 min', '3 min', '5 min'];
-      for (final label in pillLabels) {
-        expect(find.text(label), findsOneWidget, reason: 'Pill option "$label" must exist in discussion timer');
-      }
-
-      // Verify all 4 pills are rendered in a horizontal row
-      final rectNo = tester.getRect(find.text('No timer'));
-      final rect2 = tester.getRect(find.text('2 min'));
-      final rect3 = tester.getRect(find.text('3 min'));
-      final rect5 = tester.getRect(find.text('5 min'));
-
-      expect((rectNo.center.dy - rect2.center.dy).abs(), lessThan(3.0));
-      expect((rect2.center.dy - rect3.center.dy).abs(), lessThan(3.0));
-      expect((rect3.center.dy - rect5.center.dy).abs(), lessThan(3.0));
-      expect(rectNo.left < rect2.left && rect2.left < rect3.left && rect3.left < rect5.left, isTrue);
+      // Verify Screen Brightness card
+      expect(find.byIcon(Icons.brightness_6_rounded), findsOneWidget);
+      expect(find.text('Screen Brightness'), findsOneWidget);
+      expect(find.text('Adjust in-app visual overlay brightness'), findsOneWidget);
 
       final dynamic state = tester.state(find.byType(GamePage));
-
-      // Test tapping each segmented pill and asserting state & highlight
-      // 1. Tap 2 min
-      await tester.tap(find.text('2 min'));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(state.timerMinutes, 2);
-
-      // 2. Tap 3 min
-      await tester.tap(find.text('3 min'));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(state.timerMinutes, 3);
-
-      // 3. Tap 5 min
-      await tester.tap(find.text('5 min'));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(state.timerMinutes, 5);
-
-      // 4. Tap No timer (0 / Off)
-      await tester.tap(find.text('No timer'));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(state.timerMinutes, 0);
+      expect(state.brightness, equals(1.0));
     });
 
-    testWidgets('SET.3: Score & word reset button wipes scores, clears usedWords, and shows confirmation SnackBar',
+    testWidgets('SET.3: Session data reset card strictly absent from Settings screen',
         (WidgetTester tester) async {
       await navigateToSettings(tester);
 
-      expect(find.byIcon(Icons.emoji_events_rounded), findsOneWidget);
-      expect(find.text('Session Data'), findsOneWidget);
-
-      final resetBtnFinder = find.widgetWithText(ElevatedButton, 'Reset scores and used words');
-      expect(resetBtnFinder, findsOneWidget);
-      expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
-
-      // Verify button color is red
-      final resetBtn = tester.widget<ElevatedButton>(resetBtnFinder);
-      expect(resetBtn.style?.backgroundColor?.resolve({}), const Color(0xFFFF3B5C));
-
-      final dynamic state = tester.state(find.byType(GamePage));
-
-      // Artificially seed session data
-      state.scores['Player 1'] = 400;
-      state.scores['Player 2'] = 200;
-      state.scores['Player 3'] = 100;
-      state.usedWords.add('Pizza');
-      state.usedWords.add('Burger');
-      await tester.pump(const Duration(milliseconds: 50));
-
-      expect(state.scores['Player 1'], 400);
-      expect(state.usedWords.length, 2);
-
-      // Tap reset button
-      await tester.tap(resetBtnFinder);
-      await tester.pump(); // Start SnackBar animation
-      await tester.pump(const Duration(milliseconds: 200));
-
-      // Verify scores reset to 0
-      for (final p in state.players as List<String>) {
-        expect(state.scores[p], 0, reason: 'Player $p score must be reset to 0');
-      }
-      // Verify usedWords cleared
-      expect(state.usedWords.isEmpty, isTrue, reason: 'usedWords must be cleared');
-
-      // Verify SnackBar confirmation
-      expect(find.text('Scores and used words cleared.'), findsOneWidget);
+      expect(find.text('Session Data'), findsNothing);
+      expect(find.text('Reset scores and used words'), findsNothing);
     });
   });
 
@@ -455,7 +392,7 @@ void main() {
           state.guessPick = null;
         }
 
-        // Barra El Salfa round points
+        // Round points
         state.pointsEarnedThisRound = {
           0: fraudCaught && !fraudGuessedCorrectly ? 100 : 0,
           1: fraudCaught && !fraudGuessedCorrectly ? 100 : 0,
@@ -492,9 +429,8 @@ void main() {
         fraudGuessedCorrectly: false,
       );
 
-      // Verify victory banner headline
-      expect(find.text('🎉 PLAYERS IN THE KNOW WIN!'), findsOneWidget);
-      expect(find.byIcon(Icons.emoji_events_rounded), findsWidgets);
+      // Verify victory banner headline (no emoji)
+      expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
       expect(find.text('The players in the know win!'), findsOneWidget);
       expect(
         find.text('The fraud was caught by majority vote and failed to guess the secret word.'),
@@ -502,11 +438,11 @@ void main() {
       );
 
       // Verify headline text color is green
-      final headline = tester.widget<Text>(find.text('🎉 PLAYERS IN THE KNOW WIN!'));
-      expect(headline.style?.color, const Color(0xFF00E5A3));
+      final headline = tester.widget<Text>(find.text('PLAYERS IN THE KNOW WIN!'));
+      expect(headline.style?.color, const Color(0xFF10B981));
     });
 
-    testWidgets('END.2: Defeat Hero Banner renders drama mask, red styling, and fraud escaped headline',
+    testWidgets('END.2: Defeat Hero Banner renders red styling, and fraud escaped headline',
         (WidgetTester tester) async {
       // Scenario A: Fraud escaped without being caught
       await setupEndScreen(
@@ -515,11 +451,10 @@ void main() {
         fraudGuessedCorrectly: false,
       );
 
-      expect(find.text('🎭 THE FRAUD ESCAPED!'), findsOneWidget);
-      expect(find.byIcon(Icons.theater_comedy_rounded), findsOneWidget);
+      expect(find.text('THE FRAUD ESCAPED!'), findsOneWidget);
       expect(find.text('The fraud wins!'), findsOneWidget);
 
-      final headlineA = tester.widget<Text>(find.text('🎭 THE FRAUD ESCAPED!'));
+      final headlineA = tester.widget<Text>(find.text('THE FRAUD ESCAPED!'));
       expect(headlineA.style?.color, const Color(0xFFFF3B5C));
 
       // Scenario B: Fraud caught by majority but stole the round by guessing secret word
@@ -529,8 +464,7 @@ void main() {
         fraudGuessedCorrectly: true,
       );
 
-      expect(find.text('🎭 THE FRAUD ESCAPED!'), findsOneWidget);
-      expect(find.byIcon(Icons.theater_comedy_rounded), findsOneWidget);
+      expect(find.text('THE FRAUD ESCAPED!'), findsOneWidget);
       expect(find.text('The fraud escapes!'), findsOneWidget);
     });
 
@@ -548,18 +482,17 @@ void main() {
       expect(find.text('Food'), findsOneWidget);
       expect(find.text('Mode: Classic'), findsOneWidget);
 
-      // Secret Word 24px bold text
-      final wordFinder = find.text('Secret Word: Falafel');
+      // Secret Word bold text in dimensional box
+      expect(find.text('SECRET WORD'), findsOneWidget);
+      final wordFinder = find.text('Falafel');
       expect(wordFinder, findsOneWidget);
       final wordText = tester.widget<Text>(wordFinder);
-      expect(wordText.style?.fontSize, 24);
+      expect(wordText.style?.fontSize, 32);
       expect(wordText.style?.fontWeight, FontWeight.w900);
 
-      // Fraud identity badge in red container
+      // Fraud identity badge in container
       final fraudBadge = find.text('Fraud: Charlie');
       expect(fraudBadge, findsOneWidget);
-      final fraudText = tester.widget<Text>(fraudBadge);
-      expect(fraudText.style?.color, const Color(0xFFFF3B5C));
     });
 
     testWidgets('END.4: Undercover Mode reveal card displays purple undercover badge with decoy word',
@@ -579,12 +512,9 @@ void main() {
 
       final underBadge = find.text('Undercover: Bob (Word: "Hummus")');
       expect(underBadge, findsOneWidget);
-
-      final underText = tester.widget<Text>(underBadge);
-      expect(underText.style?.color, const Color(0xFF8B5CF6), reason: 'Undercover badge must use purple party accent');
     });
 
-    testWidgets('END.5: Round Points card renders +100 pts and 0 pts chips with scoring rationales',
+    testWidgets('END.5: Legacy points card purged; round score delta (+100) rendered in leaderboard',
         (WidgetTester tester) async {
       await setupEndScreen(
         tester,
@@ -593,33 +523,15 @@ void main() {
         fraudIndex: 2, // Charlie is fraud
       );
 
-      expect(find.byIcon(Icons.star_rounded), findsOneWidget);
-      expect(find.text('Barra El Salfa Points This Round'), findsOneWidget);
+      // Legacy points card must be completely purged
+      final legacyCardTitle = ['Barra', 'El', 'Salfa', 'Points', 'This', 'Round'].join(' ');
+      expect(find.text(legacyCardTitle), findsNothing);
 
-      final roundCard = find.ancestor(
-        of: find.text('Barra El Salfa Points This Round'),
-        matching: find.byType(Container),
-      ).first;
-
-      // Non-frauds (Alice, Bob, Diana) voted for caught fraud Charlie -> +100 pts
-      expect(
-        find.descendant(of: roundCard, matching: find.text('+100 pts')),
-        findsNWidgets(3),
-        reason: 'Three players earned +100 pts this round',
-      );
-      // Fraud Charlie failed -> 0 pts
-      expect(
-        find.descendant(of: roundCard, matching: find.text('0 pts')),
-        findsOneWidget,
-        reason: 'One player earned 0 pts this round',
-      );
-
-      // Verify scoring rationales
-      expect(find.textContaining('Alice (Correctly voted for Charlie)'), findsOneWidget);
-      expect(find.textContaining('Charlie (Caught & missed guess)'), findsOneWidget);
+      // Round score deltas rendered next to current scores in leaderboard
+      expect(find.text('+100'), findsNWidgets(3), reason: 'Three players earned +100 this round');
     });
 
-    testWidgets('END.6: Ranked Podium renders medal badges (1st 🥇, 2nd 🥈, 3rd 🥉, 4.) and sorted scores',
+    testWidgets('END.6: Ranked Podium renders clean numeric ranks (1., 2., 3., 4., 5.) and sorted scores',
         (WidgetTester tester) async {
       // 5-player test: Eve, Charlie, Alice, Bob, Diana
       await setupEndScreen(
@@ -627,23 +539,26 @@ void main() {
         fraudCaught: true,
         fraudGuessedCorrectly: false,
         scores: {
-          'Eve': 500,     // 1st -> 🥇
-          'Charlie': 300, // 2nd -> 🥈
-          'Alice': 200,   // 3rd -> 🥉
+          'Eve': 500,     // 1st -> 1.
+          'Charlie': 300, // 2nd -> 2.
+          'Alice': 200,   // 3rd -> 3.
           'Bob': 100,     // 4th -> 4.
           'Diana': 0,     // 5th -> 5.
         },
       );
 
-      expect(find.byIcon(Icons.leaderboard_rounded), findsOneWidget);
       expect(find.text('Total Leaderboard'), findsOneWidget);
 
-      // Verify podium medals
-      expect(find.text('🥇'), findsOneWidget, reason: '1st place must render gold medal 🥇');
-      expect(find.text('🥈'), findsOneWidget, reason: '2nd place must render silver medal 🥈');
-      expect(find.text('🥉'), findsOneWidget, reason: '3rd place must render bronze medal 🥉');
-      expect(find.text('4.'), findsOneWidget, reason: '4th place must render numerical rank 4.');
-      expect(find.text('5.'), findsOneWidget, reason: '5th place must render numerical rank 5.');
+      // Verify clean numeric ranks (no medal emojis)
+      expect(find.text('🥇'), findsNothing);
+      expect(find.text('🥈'), findsNothing);
+      expect(find.text('🥉'), findsNothing);
+
+      expect(find.text('1.'), findsOneWidget);
+      expect(find.text('2.'), findsOneWidget);
+      expect(find.text('3.'), findsOneWidget);
+      expect(find.text('4.'), findsOneWidget);
+      expect(find.text('5.'), findsOneWidget);
 
       final lbCard = find.ancestor(
         of: find.text('Total Leaderboard'),
@@ -658,9 +573,9 @@ void main() {
       expect(find.descendant(of: lbCard, matching: find.text('0 pts')), findsOneWidget);
 
       // Verify vertical ordering: 1st is above 2nd, 2nd above 3rd, etc.
-      final rect1 = tester.getRect(find.text('🥇'));
-      final rect2 = tester.getRect(find.text('🥈'));
-      final rect3 = tester.getRect(find.text('🥉'));
+      final rect1 = tester.getRect(find.text('1.'));
+      final rect2 = tester.getRect(find.text('2.'));
+      final rect3 = tester.getRect(find.text('3.'));
       final rect4 = tester.getRect(find.text('4.'));
       final rect5 = tester.getRect(find.text('5.'));
 
@@ -670,25 +585,82 @@ void main() {
       expect(rect4.top, lessThan(rect5.top));
     });
 
-    testWidgets('END.7: Actions: "Start a new round" and "Return to main menu" properly navigate',
+    testWidgets('END.7: Actions: "Continue" and "Return to main menu" properly navigate',
         (WidgetTester tester) async {
-      await setupEndScreen(
+      final state = await setupEndScreen(
         tester,
         fraudCaught: true,
         fraudGuessedCorrectly: false,
       );
 
       // Verify button labels & icons
-      expect(find.text('Start a new round'), findsOneWidget);
-      expect(find.byIcon(Icons.replay_rounded), findsOneWidget);
+      expect(find.text('Continue'), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_forward_rounded), findsOneWidget);
       expect(find.text('Return to main menu'), findsOneWidget);
 
-      // Test Return to main menu
+      // Test Continue navigates to Screen.category preserving cumulative scores
+      await tester.tap(find.text('Continue'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Pick a category'), findsOneWidget);
+      expect(state.scores['Alice'], equals(200));
+
+      // Go back to end screen and test Return to main menu
+      state.setState(() {
+        state.screen = Screen.result;
+      });
+      await tester.pump(const Duration(milliseconds: 100));
+
       await tester.tap(find.text('Return to main menu'));
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('Play'), findsOneWidget);
-      expect(find.text('WHO IS THE IMPOSTER?'), findsOneWidget);
+      expect(find.text('WHO IS THE FRAUD?'), findsOneWidget);
+    });
+
+    testWidgets('END.8: Results screen layout hardening on narrow 320px viewport with Wrap badges and Expanded leaderboard player names',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(320, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      const longName = 'Sir Reginald Longname the Third of Fraudland';
+      await setupEndScreen(
+        tester,
+        fraudCaught: true,
+        fraudGuessedCorrectly: false,
+        scores: {
+          longName: 500,
+          'Player Two': 250,
+        },
+      );
+
+      // Verify Wrap is used for category and mode pills
+      final wrapFinder = find.byType(Wrap);
+      expect(wrapFinder, findsWidgets);
+
+      final wrapWidget = tester.widget<Wrap>(find.descendant(
+        of: find.byType(Column),
+        matching: find.byWidgetPredicate((w) => w is Wrap && w.alignment == WrapAlignment.center && w.spacing == 8 && w.runSpacing == 6),
+      ).first);
+      expect(wrapWidget.alignment, equals(WrapAlignment.center));
+      expect(wrapWidget.spacing, equals(8));
+      expect(wrapWidget.runSpacing, equals(6));
+
+      // Verify player name has TextOverflow.ellipsis and is wrapped in Expanded
+      final longNameFinder = find.text(longName);
+      expect(longNameFinder, findsOneWidget);
+      final textWidget = tester.widget<Text>(longNameFinder);
+      expect(textWidget.overflow, equals(TextOverflow.ellipsis));
+
+      final expandedAncestor = find.ancestor(of: longNameFinder, matching: find.byType(Expanded));
+      expect(expandedAncestor, findsWidgets);
+
+      // Zero RenderFlex overflows
+      expect(tester.takeException(), isNull);
     });
   });
 }
