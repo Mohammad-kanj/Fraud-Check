@@ -186,7 +186,7 @@ void main() {
       // Verify Settings screen elements
       expect(find.text('Settings'), findsWidgets);
       expect(find.text('Sound effects'), findsOneWidget);
-      expect(find.text('Audio Feedback'), findsOneWidget);
+      expect(find.text('Audio'), findsOneWidget);
       expect(find.text('Screen Brightness'), findsOneWidget);
       expect(find.byType(Slider), findsNWidgets(2));
       expect(find.text('Discussion timer'), findsNothing);

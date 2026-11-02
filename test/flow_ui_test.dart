@@ -91,9 +91,10 @@ void main() {
       expect(isFraud || isSafe, isTrue);
 
       if (isFraud) {
-        expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
+        expect(find.byIcon(Icons.lock_open_rounded), findsNothing);
+        expect(find.text('👁️ FRAUD'), findsOneWidget);
       } else {
-        expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+        expect(find.byIcon(Icons.lock_rounded), findsNothing);
         expect(find.text('YOUR SECRET WORD'), findsOneWidget);
       }
     });

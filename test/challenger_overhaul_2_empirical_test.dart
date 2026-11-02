@@ -109,13 +109,13 @@ void main() {
 
       // Cycle forward for 60 questions (> 50 question cycles)
       for (int i = 0; i < 60; i++) {
-        final expectedCycle = i % 4;
-        final expectedAsker = players[askers[expectedCycle]];
-        final expectedResponder = players[targets[expectedCycle]];
-        final expectedText = '$expectedAsker asks $expectedResponder';
+        final currentAsker = players[state.questionAskers[i]];
+        final currentResponder = players[state.questionTargets[i]];
 
-        expect(find.text(expectedText), findsOneWidget,
-            reason: 'Step $i (cycle $expectedCycle) must correctly display the turn indicator');
+        expect(find.text(currentAsker), findsOneWidget);
+        expect(find.text('asks'), findsOneWidget);
+        expect(find.text(currentResponder), findsOneWidget);
+        expect(currentAsker, isNot(equals(currentResponder)));
 
         // Verify no round counters or 'Questioning Round' labels exist
         expect(find.textContaining('Questioning Round'), findsNothing);
@@ -123,26 +123,19 @@ void main() {
         expect(find.textContaining('ASKER:'), findsNothing);
         expect(find.textContaining('RESPONDER:'), findsNothing);
 
+        // Previous question is removed per R4.3
+        expect(find.text('Previous question'), findsNothing);
+
         // Tap 'Next question'
         await tester.tap(find.text('Next question'));
         await tester.pump(const Duration(milliseconds: 50));
       }
 
       expect(state.questionTurnIdx, 60);
-
-      // Cycle backward 60 questions back to 0
-      for (int i = 60; i > 0; i--) {
-        expect(find.text('Previous question'), findsOneWidget);
-        await tester.tap(find.text('Previous question'));
-        await tester.pump(const Duration(milliseconds: 50));
-      }
-
-      expect(state.questionTurnIdx, 0);
-      // At index 0, 'Previous question' button must be absent
       expect(find.text('Previous question'), findsNothing);
       expect(find.text('Next question'), findsOneWidget);
 
-      // Check transition to voting is still healthy after 120 rapid cycle transitions
+      // Check transition to voting is still healthy after 60 rapid transitions
       await tester.tap(find.text('Vote'));
       await tester.pump(const Duration(milliseconds: 100));
       expect(state.screen.toString(), contains('vote'));
@@ -387,11 +380,12 @@ void main() {
         expect(find.text('Category: Food'), findsOneWidget);
 
         if (isFraud) {
-          // Fraud Lock Invariant: lock icon is open
-          expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
+          // Fraud Lock Invariant: lock icon removed once revealed (R3)
+          expect(find.byIcon(Icons.lock_open_rounded), findsNothing);
           expect(find.byIcon(Icons.lock_rounded), findsNothing);
 
           // Fraud Role Text
+          expect(find.text('👁️ FRAUD'), findsOneWidget);
           expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
           expect(find.text('YOU ARE NOT THE FRAUD'), findsNothing);
 
@@ -403,8 +397,8 @@ void main() {
           expect(find.textContaining('secret word unknown'), findsNothing);
           expect(find.text('YOUR SECRET WORD'), findsNothing);
         } else {
-          // Safe Player Lock Invariant: lock icon is locked
-          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+          // Safe Player Lock Invariant: lock icon removed once revealed (R3)
+          expect(find.byIcon(Icons.lock_rounded), findsNothing);
           expect(find.byIcon(Icons.lock_open_rounded), findsNothing);
 
           // Safe Player Role Text
@@ -461,14 +455,15 @@ void main() {
           // Decoy word
           expect(find.text('YOUR DECOY WORD'), findsOneWidget);
           expect(find.text(state.roundUndercoverWord as String), findsOneWidget);
-          // Lock icon is locked (undercover is not the fraud)
-          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+          // Lock icon is removed once revealed (R3)
+          expect(find.byIcon(Icons.lock_rounded), findsNothing);
           expect(find.byIcon(Icons.lock_open_rounded), findsNothing);
         } else if (isFraud) {
-          expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_open_rounded), findsNothing);
+          expect(find.text('👁️ FRAUD'), findsOneWidget);
           expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
         } else {
-          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsNothing);
           expect(find.text('YOU ARE NOT THE FRAUD'), findsOneWidget);
           expect(find.text('YOUR SECRET WORD'), findsOneWidget);
         }
@@ -482,7 +477,7 @@ void main() {
       }
     });
 
-    testWidgets('Two Frauds Mode: Both frauds see open lock icon, 2-frauds blend-in guidance, and "YOU ARE THE FRAUD"',
+    testWidgets('Two Frauds Mode: Both frauds see fraud eye badge, 2-frauds blend-in guidance, and "YOU ARE THE FRAUD"',
         (WidgetTester tester) async {
       await startRoundWithPlayerCount(tester, targetCount: 4, modeTitle: 'Two Frauds', category: 'Food');
 
@@ -499,14 +494,15 @@ void main() {
         await tester.pump(const Duration(milliseconds: 400));
 
         if (isFraud) {
-          expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_open_rounded), findsNothing);
+          expect(find.text('👁️ FRAUD'), findsOneWidget);
           expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
           expect(
             find.text('There are 2 frauds this round! Listen closely, blend in, and try to deduce the secret word.'),
             findsOneWidget,
           );
         } else {
-          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsNothing);
           expect(find.text('YOU ARE NOT THE FRAUD'), findsOneWidget);
         }
 

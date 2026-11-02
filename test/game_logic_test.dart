@@ -62,18 +62,43 @@ void main() {
       expect(scores['Charlie'], equals(0));
     });
 
-    test('Fraud guesses secret word correctly: fraud steals 100 points, safe players get 0', () {
+    test('Caught fraud guesses secret word correctly: fraud receives 50 points, voters get 100', () {
       final players = ['Alice', 'Bob', 'Charlie', 'David'];
       final scores = <String, int>{for (var p in players) p: 0};
       const fraudIdx = 3; // David is fraud
+      final playerVotes = {0: 3, 1: 3, 2: 3, 3: 0};
 
-      // Fraud steals round:
-      scores[players[fraudIdx]] = (scores[players[fraudIdx]] ?? 0) + roundPoints;
+      // Caught fraud guesses correctly (R6):
+      scores[players[fraudIdx]] = (scores[players[fraudIdx]] ?? 0) + 50;
+      for (int v = 0; v < players.length; v++) {
+        if (v != fraudIdx && playerVotes[v] == fraudIdx) {
+          scores[players[v]] = (scores[players[v]] ?? 0) + roundPoints;
+        }
+      }
 
-      expect(scores['David'], equals(100));
-      expect(scores['Alice'], equals(0));
-      expect(scores['Bob'], equals(0));
-      expect(scores['Charlie'], equals(0));
+      expect(scores['David'], equals(50));
+      expect(scores['Alice'], equals(100));
+      expect(scores['Bob'], equals(100));
+      expect(scores['Charlie'], equals(100));
+    });
+
+    test('Caught fraud guesses incorrectly: fraud receives 0 points, voters get 100', () {
+      final players = ['Alice', 'Bob', 'Charlie', 'David'];
+      final scores = <String, int>{for (var p in players) p: 0};
+      const fraudIdx = 3; // David is fraud
+      final playerVotes = {0: 3, 1: 3, 2: 3, 3: 0};
+
+      // Caught fraud misses guess (R6):
+      for (int v = 0; v < players.length; v++) {
+        if (v != fraudIdx && playerVotes[v] == fraudIdx) {
+          scores[players[v]] = (scores[players[v]] ?? 0) + roundPoints;
+        }
+      }
+
+      expect(scores['David'], equals(0));
+      expect(scores['Alice'], equals(100));
+      expect(scores['Bob'], equals(100));
+      expect(scores['Charlie'], equals(100));
     });
 
     test('Two Frauds role assignment properly assigns 2 distinct frauds', () {

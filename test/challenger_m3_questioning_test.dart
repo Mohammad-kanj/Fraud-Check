@@ -85,15 +85,15 @@ void main() {
   // =========================================================================
   // GROUP 1: MATHEMATICAL & ROUND-ROBIN PAIRING INVARIANTS (ORACLE 3-10 PLAYERS)
   // =========================================================================
-  group('Empirical Challenger M3: Group 1 - Round-Robin Invariants Oracle (3 to 10 players)', () {
-    test('QR.1.1: Oracle verifies round-robin pairings for 3 to 10 players across 800 permutations', () {
+  group('Empirical Challenger M3: Group 1 - Random Derangement Invariants Oracle (3 to 10 players)', () {
+    test('QR.1.1: Oracle verifies random derangement pairings for 3 to 10 players across 800 permutations', () {
       final rng = Random(42);
 
       for (int n = 3; n <= 10; n++) {
         for (int iteration = 0; iteration < 100; iteration++) {
-          final order = List.generate(n, (i) => i)..shuffle(rng);
-          final askers = List<int>.from(order);
-          final targets = List.generate(n, (i) => order[(i + 1) % n]);
+          final pairing = generateRandomQuestioningRound(n, rng);
+          final askers = pairing.askers;
+          final targets = pairing.targets;
 
           // 1. Length invariant
           expect(askers.length, equals(n),
@@ -116,42 +116,16 @@ void main() {
           final targetSet = targets.toSet();
           expect(targetSet.length, equals(n),
               reason: 'Every player must be asked questions exactly once');
-
-          // 5. Single Hamiltonian Cycle: Traversing askers[i] -> targets[i] visits all players
-          final visited = <int>{};
-          int current = askers[0];
-          for (int step = 0; step < n; step++) {
-            expect(visited.contains(current), isFalse,
-                reason: 'Cycle must not prematurely repeat player $current before visiting all $n players');
-            visited.add(current);
-
-            // Find index of current as asker
-            final turnIdx = askers.indexOf(current);
-            expect(turnIdx, isNot(equals(-1)));
-            current = targets[turnIdx];
-          }
-
-          expect(visited.length, equals(n),
-              reason: 'Traversing the questioning chain must visit all $n players');
-          expect(current, equals(askers[0]),
-              reason: 'Traversing $n edges must return to the initial asker');
-
-          // 6. Direct forward link: Responder of turn t is the Asker of turn (t+1)%n
-          for (int t = 0; t < n; t++) {
-            final nextTurn = (t + 1) % n;
-            expect(targets[t], equals(askers[nextTurn]),
-                reason: 'Responder of turn $t must be the Asker of turn $nextTurn');
-          }
         }
       }
     });
   });
 
   // =========================================================================
-  // GROUP 2: SIMPLIFIED QUESTIONING DISPLAY & CONTROLS (N=3, R8)
+  // GROUP 2: SIMPLIFIED QUESTIONING DISPLAY & CONTROLS (N=3, R4)
   // =========================================================================
   group('Empirical Challenger M3: Group 2 - Simplified Questioning & Controls (N=3)', () {
-    testWidgets('QR.2.1: Questioning UI correctly renders simple indicator, infinite cycling, and Vote button',
+    testWidgets('QR.2.1: Questioning UI correctly renders vertical indicator boxes, infinite progression, and Vote button',
         (WidgetTester tester) async {
       await startRoundWithPlayerCount(tester, targetCount: 3, modeTitle: 'Classic', category: 'Food');
       await passThroughAllPlayers(tester, 3);
@@ -169,18 +143,26 @@ void main() {
       expect(find.text('ASKER'), findsNothing);
       expect(find.text('RESPONDER'), findsNothing);
 
-      // Light box instruction container is present
+      // Light box instruction container and Discuss header are present
+      expect(find.text('Discuss!'), findsOneWidget);
       expect(find.text('Give clues and ask each other questions. Do not say your secret word!'), findsOneWidget);
 
-      // TURN 1: Simple indicator
+      // Top bar options menu icon is present matching voting screen
+      expect(find.byIcon(Icons.more_vert), findsOneWidget);
+      expect(find.byTooltip('Options'), findsOneWidget);
+
+      // TURN 1: Vertical prompt (asker and responder in separate boxes separated by 'asks')
       final asker0 = players[askers[0]];
       final target0 = players[targets[0]];
-      expect(find.text('$asker0 asks $target0'), findsOneWidget);
+      expect(find.text(asker0), findsOneWidget);
+      expect(find.text('asks'), findsOneWidget);
+      expect(find.text(target0), findsOneWidget);
+      expect(find.text('$asker0 asks $target0'), findsNothing);
 
-      // Controls on turn 1
+      // Controls on turn 1: Previous question button is completely removed
       expect(find.text('Next question'), findsOneWidget);
       expect(find.text('Previous question'), findsNothing,
-          reason: 'Previous question button must not be visible on turn 1');
+          reason: 'Previous question button must be removed per R4.3');
 
       // Bottom voting button is strictly labeled 'Vote'
       expect(find.text('Vote'), findsOneWidget);
@@ -189,45 +171,71 @@ void main() {
       await tester.tap(find.text('Next question'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      final asker1 = players[askers[1]];
-      final target1 = players[targets[1]];
-      expect(find.text('$asker1 asks $target1'), findsOneWidget);
-      expect(find.text('Previous question'), findsOneWidget);
+      final asker1 = players[state.questionAskers[1]];
+      final target1 = players[state.questionTargets[1]];
+      expect(find.text(asker1), findsOneWidget);
+      expect(find.text('asks'), findsOneWidget);
+      expect(find.text(target1), findsOneWidget);
+      expect(find.text('Previous question'), findsNothing);
       expect(find.text('Next question'), findsOneWidget);
 
       // ADVANCE TO TURN 3
       await tester.tap(find.text('Next question'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      final asker2 = players[askers[2]];
-      final target2 = players[targets[2]];
-      expect(find.text('$asker2 asks $target2'), findsOneWidget);
-
-      // Infinite cycling: Next question remains available even on turn 3
-      expect(find.text('Next question'), findsOneWidget);
-      expect(find.text('Previous question'), findsOneWidget);
-
-      // ADVANCE TO TURN 4 (Modulo cycling back to turn 1 pair)
-      await tester.tap(find.text('Next question'));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('$asker0 asks $target0'), findsOneWidget);
-
-      // STEP BACK TO TURN 3
-      await tester.tap(find.text('Previous question'));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('$asker2 asks $target2'), findsOneWidget);
-
-      // STEP BACK TO TURN 2
-      await tester.tap(find.text('Previous question'));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('$asker1 asks $target1'), findsOneWidget);
-
-      // STEP BACK TO TURN 1
-      await tester.tap(find.text('Previous question'));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('$asker0 asks $target0'), findsOneWidget);
+      final asker2 = players[state.questionAskers[2]];
+      final target2 = players[state.questionTargets[2]];
+      expect(find.text(asker2), findsOneWidget);
+      expect(find.text('asks'), findsOneWidget);
+      expect(find.text(target2), findsOneWidget);
       expect(find.text('Previous question'), findsNothing);
       expect(find.text('Next question'), findsOneWidget);
+
+      // ADVANCE TO TURN 4 (Subsequent round generation)
+      await tester.tap(find.text('Next question'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // In Round 2, new pairings are appended (total length becomes 6)
+      expect(state.questionTurnIdx, equals(3));
+      expect(state.questionAskers.length, equals(6));
+      expect(state.questionTargets.length, equals(6));
+
+      final asker3 = players[state.questionAskers[3]];
+      final target3 = players[state.questionTargets[3]];
+      expect(find.text(asker3), findsOneWidget);
+      expect(find.text('asks'), findsOneWidget);
+      expect(find.text(target3), findsOneWidget);
+      expect(find.text('Previous question'), findsNothing);
+      expect(find.text('Next question'), findsOneWidget);
+    });
+
+    testWidgets('QR.2.2: Discussion screen top bar includes three-dots options menu matching voting',
+        (WidgetTester tester) async {
+      await startRoundWithPlayerCount(tester, targetCount: 3, modeTitle: 'Classic', category: 'Food');
+      await passThroughAllPlayers(tester, 3);
+
+      final dynamic state = tester.state(find.byType(GamePage));
+      expect(state.screen.toString(), contains('discuss'));
+
+      // Verify three-dots menu icon exists in top bar
+      expect(find.byIcon(Icons.more_vert), findsOneWidget);
+      expect(find.byTooltip('Options'), findsOneWidget);
+
+      // Tap options icon to display modal dialog
+      await tester.tap(find.byTooltip('Options'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Options'), findsOneWidget);
+      expect(find.text('Restart round'), findsOneWidget);
+      expect(find.text('Change players'), findsOneWidget);
+      expect(find.text('Back to main menu'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+
+      // Tap Cancel dismisses dialog without state change
+      await tester.tap(find.text('Cancel'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Options'), findsNothing);
+      expect(state.screen.toString(), contains('discuss'));
     });
   });
 
@@ -235,7 +243,7 @@ void main() {
   // GROUP 3: BOUNDARY MAXIMUM SCALE (N=10 PLAYERS FULL TRAVERSAL)
   // =========================================================================
   group('Empirical Challenger M3: Group 3 - Maximum Player Scale (N=10)', () {
-    testWidgets('QR.3.1: Sequential 10-player questioning traversal verifies counter, pairs, and boundaries',
+    testWidgets('QR.3.1: Sequential 10-player questioning traversal verifies vertical prompt, derangements, and round 2 progression',
         (WidgetTester tester) async {
       await startRoundWithPlayerCount(tester, targetCount: 10, modeTitle: 'Classic', category: 'Food');
       await passThroughAllPlayers(tester, 10);
@@ -250,20 +258,19 @@ void main() {
       expect(askers.length, equals(10));
       expect(targets.length, equals(10));
 
-      // Step forward through all 10 questions
+      // Step forward through all 10 questions in Round 1
       for (int step = 1; step <= 10; step++) {
         final currentAsker = players[askers[step - 1]];
         final currentTarget = players[targets[step - 1]];
         expect(currentAsker, isNot(equals(currentTarget)),
             reason: 'Step $step: Asker must differ from Responder');
 
-        expect(find.text('$currentAsker asks $currentTarget'), findsOneWidget);
+        expect(find.text(currentAsker), findsOneWidget);
+        expect(find.text('asks'), findsOneWidget);
+        expect(find.text(currentTarget), findsOneWidget);
 
-        if (step > 1) {
-          expect(find.text('Previous question'), findsOneWidget);
-        } else {
-          expect(find.text('Previous question'), findsNothing);
-        }
+        // Previous question is removed per R4.3
+        expect(find.text('Previous question'), findsNothing);
 
         // Infinite cycling: Next question is always available
         expect(find.text('Next question'), findsOneWidget);
@@ -273,19 +280,29 @@ void main() {
         }
       }
 
-      // Step backward all the way from 10 back to 1
-      for (int step = 10; step >= 2; step--) {
-        final currentAsker = players[askers[step - 1]];
-        final currentTarget = players[targets[step - 1]];
-        expect(find.text('$currentAsker asks $currentTarget'), findsOneWidget);
-        await tester.tap(find.text('Previous question'));
-        await tester.pump(const Duration(milliseconds: 100));
+      // Advance to Question 11 (entering Round 2 with 10 players)
+      await tester.tap(find.text('Next question'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(state.questionTurnIdx, equals(10));
+      expect(state.questionAskers.length, equals(20));
+      expect(state.questionTargets.length, equals(20));
+
+      // Verify Round 2 derangement invariants across all 10 players
+      final round2Askers = (state.questionAskers as List<int>).sublist(10, 20);
+      final round2Targets = (state.questionTargets as List<int>).sublist(10, 20);
+      expect(round2Askers.toSet().length, equals(10));
+      expect(round2Targets.toSet().length, equals(10));
+      for (int t = 0; t < 10; t++) {
+        expect(round2Askers[t], isNot(equals(round2Targets[t])),
+            reason: 'Round 2 Turn $t: Asker must not equal Responder');
       }
 
-      // Back at Question 1
-      final firstAsker = players[askers[0]];
-      final firstTarget = players[targets[0]];
-      expect(find.text('$firstAsker asks $firstTarget'), findsOneWidget);
+      final r2FirstAsker = players[round2Askers[0]];
+      final r2FirstTarget = players[round2Targets[0]];
+      expect(find.text(r2FirstAsker), findsOneWidget);
+      expect(find.text('asks'), findsOneWidget);
+      expect(find.text(r2FirstTarget), findsOneWidget);
       expect(find.text('Previous question'), findsNothing);
       expect(find.text('Next question'), findsOneWidget);
     });
@@ -478,7 +495,9 @@ void main() {
       final int firstAskerIdx = (state.questionAskers as List<int>)[0];
       final int firstTargetIdx = (state.questionTargets as List<int>)[0];
 
-      expect(find.text('${customNames[firstAskerIdx]} asks ${customNames[firstTargetIdx]}'), findsOneWidget);
+      expect(find.text(customNames[firstAskerIdx]), findsOneWidget);
+      expect(find.text('asks'), findsOneWidget);
+      expect(find.text(customNames[firstTargetIdx]), findsOneWidget);
 
       // Tap through turns to verify no overflow exceptions occur with long Arabic names
       for (int i = 0; i < 3; i++) {
@@ -500,7 +519,9 @@ void main() {
       final List<int> targets = (state.questionTargets as List<int>);
       expect(askers.length, equals(5));
       expect(targets.length, equals(5));
-      expect(find.text('${state.players[askers[0]]} asks ${state.players[targets[0]]}'), findsOneWidget);
+      expect(find.text(state.players[askers[0]]), findsOneWidget);
+      expect(find.text('asks'), findsOneWidget);
+      expect(find.text(state.players[targets[0]]), findsOneWidget);
 
       // Verify Asker != Responder across all 5 turns
       for (int t = 0; t < 5; t++) {
@@ -600,13 +621,17 @@ void main() {
       });
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Defensive fallback must engage: Player 1 asks Player 2 rendered cleanly
-      expect(find.text('Player 1 asks Player 2'), findsOneWidget);
+      // Defensive fallback must engage: Player 1 asks Player 2 rendered cleanly in vertical layout
+      expect(find.text('Player 1'), findsOneWidget);
+      expect(find.text('asks'), findsOneWidget);
+      expect(find.text('Player 2'), findsOneWidget);
 
       // Verify navigation still functions cleanly under fallback
       await tester.tap(find.text('Next question'));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Player 2 asks Player 3'), findsOneWidget);
+      expect(find.text('Player 2'), findsOneWidget);
+      expect(find.text('asks'), findsOneWidget);
+      expect(find.text('Player 3'), findsOneWidget);
 
       // Verify voting transition works cleanly
       await tester.tap(find.text('Vote'));

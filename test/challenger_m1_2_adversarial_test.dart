@@ -198,9 +198,10 @@ void main() {
         if (isFraud) {
           imposterSeen = true;
           // Imposter presentation (R6 overhaul)
+          expect(find.text('👁️ FRAUD'), findsOneWidget);
           expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
           expect(find.textContaining('blend in'), findsOneWidget);
-          expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_open_rounded), findsNothing);
 
           // Secret word MUST NOT be leaked to fraud
           expect(find.text(roundWord), findsNothing);
@@ -211,7 +212,7 @@ void main() {
           expect(find.text('YOU ARE UNDERCOVER'), findsOneWidget);
           expect(find.text('YOUR DECOY WORD'), findsOneWidget);
           expect(find.text(roundUndercoverWord), findsOneWidget);
-          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsNothing);
 
           // True secret word MUST NOT be shown to undercover
           expect(find.text(roundWord), findsNothing);
@@ -221,7 +222,7 @@ void main() {
           expect(find.text('YOU ARE NOT THE FRAUD'), findsOneWidget);
           expect(find.text('YOUR SECRET WORD'), findsOneWidget);
           expect(find.text(roundWord), findsOneWidget);
-          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsNothing);
         }
 
         // Advance to next player

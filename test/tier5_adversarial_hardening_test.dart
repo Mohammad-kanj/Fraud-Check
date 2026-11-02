@@ -353,7 +353,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('ADV-R2: Rapid taps on Next question and Previous question stay safely clamped',
+    testWidgets('ADV-R2: Rapid taps on Next question advance infinite rounds safely with previous button removed',
         (WidgetTester tester) async {
       await setupAndStartRound(tester, targetPlayers: 4);
       await passThroughAllReveals(tester, 4);
@@ -373,13 +373,8 @@ void main() {
       }
       expect(state.questionTurnIdx, greaterThanOrEqualTo(5));
 
-      // Rapidly tap Previous question until back at 0
-      while (find.text('Previous question').evaluate().isNotEmpty) {
-        final prevBtn = find.text('Previous question');
-        await tester.tap(prevBtn);
-        await tester.pump(const Duration(milliseconds: 20));
-      }
-      expect(state.questionTurnIdx, equals(0));
+      // Verify Previous question is removed per R4.3
+      expect(find.text('Previous question'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -685,7 +680,7 @@ void main() {
           reason: 'Escaping fraud with <= 50% votes must earn 100 points');
     });
 
-    testWidgets('ADV-S2: Caught fraud guesses secret word correctly and steals the round',
+    testWidgets('ADV-S2: Caught fraud guesses secret word correctly: fraud loses round (50 pts) and voters earn 100 pts',
         (WidgetTester tester) async {
       await setupAndStartRound(tester, modeTitle: 'Classic', category: 'Food', targetPlayers: 4);
       await passThroughAllReveals(tester, 4);
@@ -721,15 +716,16 @@ void main() {
       await tester.tap(find.text('Confirm guess'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Fraud steals round!
-      expect(find.text('The fraud escapes!'), findsOneWidget);
+      // Under R6: Fraud loses round even on correct guess, players in the know win!
+      expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
+      expect(find.text('The players in the know win!'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
-      expect(pointsEarned[fraudIdx], equals(100),
-          reason: 'Fraud guessing secret word correctly steals round and earns 100 points');
+      expect(pointsEarned[fraudIdx], equals(50),
+          reason: 'Fraud guessing secret word correctly receives 50 points');
       for (int i = 0; i < 4; i++) {
         if (i != fraudIdx) {
-          expect(pointsEarned[i] ?? 0, equals(0),
-              reason: 'Safe players receive 0 points when fraud guesses word correctly');
+          expect(pointsEarned[i], equals(100),
+              reason: 'Safe players who voted for caught fraud receive 100 points');
         }
       }
     });

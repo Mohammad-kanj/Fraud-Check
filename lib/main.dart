@@ -344,6 +344,44 @@ class FilmStripPainter extends CustomPainter {
 }
 
 
+// ---------- Questioning Derangement Generator ----------
+class QuestionPairing {
+  final List<int> askers;
+  final List<int> targets;
+  const QuestionPairing({required this.askers, required this.targets});
+}
+
+QuestionPairing generateRandomQuestioningRound(int n, [Random? rng]) {
+  final rand = rng ?? Random();
+  if (n <= 1) {
+    return const QuestionPairing(askers: [], targets: []);
+  }
+  if (n == 2) {
+    final a = rand.nextBool() ? [0, 1] : [1, 0];
+    return QuestionPairing(askers: a, targets: [a[1], a[0]]);
+  }
+
+  // Generate derangement of targets for [0..n-1]
+  final targetsMap = List.generate(n, (i) => i);
+  while (true) {
+    targetsMap.shuffle(rand);
+    bool isDerangement = true;
+    for (int i = 0; i < n; i++) {
+      if (targetsMap[i] == i) {
+        isDerangement = false;
+        break;
+      }
+    }
+    if (isDerangement) break;
+  }
+
+  // Randomize the order of askers
+  final askers = List.generate(n, (i) => i)..shuffle(rand);
+  final targets = askers.map((a) => targetsMap[a]).toList();
+
+  return QuestionPairing(askers: askers, targets: targets);
+}
+
 // ---------- Main Game Widget ----------
 class GamePage extends StatefulWidget {
   const GamePage({super.key});
@@ -519,12 +557,11 @@ class _GamePageState extends State<GamePage> {
 
   void startDiscussion() {
     timer?.cancel();
-    final rng = Random();
-    final order = List.generate(players.length, (i) => i)..shuffle(rng);
+    final pairing = generateRandomQuestioningRound(players.length);
     setState(() {
       questionTurnIdx = 0;
-      questionAskers = List<int>.from(order);
-      questionTargets = List.generate(players.length, (i) => order[(i + 1) % players.length]);
+      questionAskers = List<int>.from(pairing.askers);
+      questionTargets = List<int>.from(pairing.targets);
       secondsLeft = timerMinutes * 60;
       screen = Screen.discuss;
     });
@@ -537,6 +574,20 @@ class _GamePageState extends State<GamePage> {
         });
       });
     }
+  }
+
+  void advanceQuestionTurn() {
+    Sound.tap();
+    setState(() {
+      questionTurnIdx++;
+      if (questionAskers.isNotEmpty && questionTargets.isNotEmpty) {
+        while (questionAskers.length <= questionTurnIdx) {
+          final nextPairing = generateRandomQuestioningRound(players.length);
+          questionAskers.addAll(nextPairing.askers);
+          questionTargets.addAll(nextPairing.targets);
+        }
+      }
+    });
   }
 
   void startVoting() {
@@ -620,31 +671,31 @@ class _GamePageState extends State<GamePage> {
     Sound.guess();
     setState(() {
       pointsEarnedThisRound.clear();
-      if (guessOptions[guessPick!] == roundWord) {
-        // Fraud successfully guessed the secret word! Frauds steal the round.
-        for (final f in fraudIndices) {
-          scores[players[f]] = (scores[players[f]] ?? 0) + roundPoints;
-          pointsEarnedThisRound[f] = roundPoints;
-        }
-        screen = Screen.result;
-        Sound.lose();
+      final isCorrect = guessOptions[guessPick!] == roundWord;
+      if (isCorrect) {
+        // Caught fraud guessed correctly: fraud receives 50 points, but loses the round.
+        scores[players[guessingFraudIndex]] =
+            (scores[players[guessingFraudIndex]] ?? 0) + 50;
+        pointsEarnedThisRound[guessingFraudIndex] = 50;
       } else {
-        // Fraud guessed wrong!
-        // Scoring rules:
-        // Every player who voted for ANY caught fraud earns +100 party points!
-        for (int voter = 0; voter < players.length; voter++) {
-          if (!fraudIndices.contains(voter)) {
-            final target = playerVotes[voter];
-            if (target != null && caughtFrauds.contains(target)) {
-              scores[players[voter]] =
-                  (scores[players[voter]] ?? 0) + roundPoints;
-              pointsEarnedThisRound[voter] = roundPoints;
-            }
+        // Caught fraud guessed incorrectly: fraud receives 0 points.
+        pointsEarnedThisRound[guessingFraudIndex] = 0;
+      }
+
+      // All players who voted for that caught fraud receive 100 points
+      for (int voter = 0; voter < players.length; voter++) {
+        if (!fraudIndices.contains(voter)) {
+          final target = playerVotes[voter];
+          if (target != null &&
+              (target == guessingFraudIndex || caughtFrauds.contains(target))) {
+            scores[players[voter]] =
+                (scores[players[voter]] ?? 0) + roundPoints;
+            pointsEarnedThisRound[voter] = roundPoints;
           }
         }
-        screen = Screen.result;
-        Sound.win();
       }
+      screen = Screen.result;
+      Sound.win();
     });
   }
 
@@ -657,11 +708,6 @@ class _GamePageState extends State<GamePage> {
           ? 'The frauds win!'
           : 'The fraud wins!';
     }
-    if (fraudGuessedCorrectly) {
-      return selectedMode.fraudCount > 1
-          ? 'The frauds escape!'
-          : 'The fraud escapes!';
-    }
     return 'The players in the know win!';
   }
 
@@ -670,7 +716,7 @@ class _GamePageState extends State<GamePage> {
       return 'No fraud received more than half of the votes, so the fraud takes the round.';
     }
     if (fraudGuessedCorrectly) {
-      return '${players[guessingFraudIndex]} guessed the secret word ("$roundWord") and stole the round!';
+      return '${players[guessingFraudIndex]} guessed the secret word ("$roundWord") for 50 bonus pts, but was caught and lost the round!';
     }
     return 'The fraud was caught by majority vote and failed to guess the secret word.';
   }
@@ -931,7 +977,7 @@ class _GamePageState extends State<GamePage> {
         ),
       );
 
-  Widget _actionCardButton(String label, IconData icon, VoidCallback onPressed) => Material(
+  Widget _actionCardButton(String label, VoidCallback onPressed) => Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onPressed,
@@ -945,21 +991,16 @@ class _GamePageState extends State<GamePage> {
             ),
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, size: 22, color: yellow),
-                  const SizedBox(width: 8),
-                  Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: ink,
-                    ),
+              child: Center(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: ink,
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -1073,14 +1114,14 @@ class _GamePageState extends State<GamePage> {
           Row(
             children: [
               Expanded(
-                child: _actionCardButton('Settings', Icons.settings_rounded, () {
+                child: _actionCardButton('Settings', () {
                   Sound.tap();
                   go(Screen.settings);
                 }),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _actionCardButton('Rules', Icons.menu_book_rounded, () {
+                child: _actionCardButton('Rules', () {
                   Sound.tap();
                   go(Screen.rules);
                 }),
@@ -1126,13 +1167,15 @@ class _GamePageState extends State<GamePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           Text(m.title,
                               style: const TextStyle(
                                   fontSize: 22, fontWeight: FontWeight.w900)),
-                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),
@@ -1181,8 +1224,11 @@ class _GamePageState extends State<GamePage> {
   Widget _category() => Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
@@ -1195,7 +1241,6 @@ class _GamePageState extends State<GamePage> {
                     style: const TextStyle(
                         color: yellow, fontSize: 13, fontWeight: FontWeight.w800)),
               ),
-              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
@@ -1234,7 +1279,7 @@ class _GamePageState extends State<GamePage> {
                 },
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
@@ -1271,43 +1316,47 @@ class _GamePageState extends State<GamePage> {
                           ),
                         ),
                       Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF252D60),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                categoryIcons[cat] ?? '🎭',
-                                style: const TextStyle(fontSize: 26),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            _categoryLabel(cat, size: 15),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: card2.withValues(alpha: 0.8),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '🏷️ ${categories[cat]!.length} words',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: muted,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF252D60),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  categoryIcons[cat] ?? '🎭',
+                                  style: const TextStyle(fontSize: 26),
                                 ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 6),
+                              _categoryLabel(cat, size: 15),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: card2.withValues(alpha: 0.8),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '🏷️ ${categories[cat]!.length} words',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: muted,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -1517,7 +1566,7 @@ class _GamePageState extends State<GamePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Audio Feedback',
+                            'Audio',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
@@ -1692,45 +1741,58 @@ class _GamePageState extends State<GamePage> {
           const SizedBox(height: 10),
           _card(Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Overview',
+            children: const [
+              Text('Overview',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
-              const SizedBox(height: 6),
-              const Text(
+              SizedBox(height: 6),
+              Text(
                 '• One or more players are secret frauds who only know the category.\n\n'
                 '• Everyone else receives the secret word and must deduce who is bluffing.\n\n'
                 '• The fraud\'s objective is to blend in, avoid detection, and guess the secret word.',
                 style: TextStyle(color: muted, height: 1.5),
               ),
-              const SizedBox(height: 16),
-              const Text('Roles & Objectives',
+            ],
+          )),
+          _card(Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text('Roles & Objectives',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
-              const SizedBox(height: 6),
-              const Text(
+              SizedBox(height: 6),
+              Text(
                 '• Classic (1 Fraud): Exactly one player is the fraud and only knows the category. Everyone else sees the secret word.\n\n'
                 '• Two Frauds: Two players are chosen as frauds! Neither knows the secret word. Double the suspicion!\n\n'
                 '• Undercover: One fraud + one undercover player. The undercover receives a related decoy word. Both try to blend in!',
                 style: TextStyle(color: muted, height: 1.5),
               ),
-              const SizedBox(height: 16),
-              const Text('Questioning Phase',
+            ],
+          )),
+          _card(Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text('Questioning Phase',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
-              const SizedBox(height: 6),
-              const Text(
+              SizedBox(height: 6),
+              Text(
                 '1. Pass the phone: Each player secretly reveals their role in private.\n\n'
                 '2. Discuss: Take turns asking smart questions and giving vague clues. Never say your secret word!\n\n'
                 '3. Infinite rounds: Questioning continues until players are ready to vote.',
                 style: TextStyle(color: muted, height: 1.5),
               ),
-              const SizedBox(height: 16),
-              const Text('Voting & Scoring',
+            ],
+          )),
+          _card(Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text('Voting & Scoring',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
-              const SizedBox(height: 6),
-              const Text(
+              SizedBox(height: 6),
+              Text(
                 '• Secret Vote: Every player votes privately for who they suspect is the fraud.\n\n'
-                '• Last chance: If a fraud is caught by majority vote (> 50%), they get 4 word options. If they guess the secret word, they steal the round!\n\n'
-                '• Caught Fraud misses guess: Every player who personally voted for the caught fraud earns +100 points!\n\n'
-                '• Fraud Escapes or Guesses Right: The fraud earns +100 points! Safe players get 0 points.\n\n'
+                '• Last chance: If a fraud is caught by majority vote (> 50%), they get 4 word options to guess the secret word.\n\n'
+                '• Caught Fraud guesses correctly: The fraud earns 50 points, but loses the round! All players who voted for that fraud earn +100 points.\n\n'
+                '• Caught Fraud misses guess: The fraud earns 0 points. All players who voted for that fraud earn +100 points!\n\n'
+                '• Fraud Escapes: If no fraud receives majority votes, frauds win the round and earn +100 points each.\n\n'
                 '• Undercover: Earns +100 points if they vote for the fraud or survive unexposed.',
                 style: TextStyle(color: muted, height: 1.5),
               ),
@@ -1845,44 +1907,20 @@ class _GamePageState extends State<GamePage> {
       children: [
         passTopBar(),
         const SizedBox(height: 6),
-        // Category and Lock Indicator at the top OUTSIDE the content box
+        // Category Indicator at the top OUTSIDE the content box
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: card2,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(categoryIcons[roundCat] ?? '📁', style: const TextStyle(fontSize: 16)),
-                    const SizedBox(width: 8),
-                    Text('Category: $roundCat',
-                        style: const TextStyle(color: yellow, fontSize: 14, fontWeight: FontWeight.w800)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: card2,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: border),
-                ),
-                child: Icon(
-                  isFraud ? Icons.lock_open_rounded : Icons.lock_rounded,
-                  color: yellow,
-                  size: 20,
-                ),
-              ),
-            ],
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: card2,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: border),
+            ),
+            child: Text(
+              'Category: $roundCat',
+              style: const TextStyle(color: yellow, fontSize: 14, fontWeight: FontWeight.w800),
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -2069,25 +2107,44 @@ class _GamePageState extends State<GamePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (isUndercover) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                decoration: BoxDecoration(
-                  color: card2,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: yellow.withValues(alpha: 0.5)),
-                ),
-                child: const Text(
-                  '👁️ UNDERCOVER',
-                  style: TextStyle(
-                    color: yellow,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.1,
-                  ),
+          if (isFraud) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              decoration: BoxDecoration(
+                color: card2,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: yellow.withValues(alpha: 0.5)),
+              ),
+              child: const Text(
+                '👁️ FRAUD',
+                style: TextStyle(
+                  color: yellow,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
                 ),
               ),
-              const SizedBox(height: 12),
+            ),
+            const SizedBox(height: 12),
+          ] else if (isUndercover) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              decoration: BoxDecoration(
+                color: card2,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: yellow.withValues(alpha: 0.5)),
+              ),
+              child: const Text(
+                '👁️ UNDERCOVER',
+                style: TextStyle(
+                  color: yellow,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
           ],
           FittedBox(
             fit: BoxFit.scaleDown,
@@ -2209,23 +2266,44 @@ class _GamePageState extends State<GamePage> {
   }
 
   Widget _discuss() {
-    final totalQuestions = players.length;
-    final List<int> askers = (questionAskers.length == totalQuestions)
+    final totalQuestions = players.isNotEmpty ? players.length : 1;
+    final bool validLists = questionAskers.isNotEmpty &&
+        questionTargets.isNotEmpty &&
+        questionAskers.length == questionTargets.length;
+    final List<int> askers = validLists
         ? questionAskers
         : List.generate(totalQuestions, (i) => i);
-    final List<int> targets = (questionTargets.length == totalQuestions)
+    final List<int> targets = validLists
         ? questionTargets
         : List.generate(totalQuestions, (i) => (i + 1) % totalQuestions);
 
-    // Infinite questioning: cycle modulo totalQuestions
-    final cycleIdx = questionTurnIdx < 0 ? 0 : (questionTurnIdx % totalQuestions);
-    final askerName = players[askers[cycleIdx]];
-    final responderName = players[targets[cycleIdx]];
+    final safeTurn = questionTurnIdx < 0 ? 0 : questionTurnIdx;
+    final currentIdx = safeTurn < askers.length ? safeTurn : (safeTurn % askers.length);
+    final askerName = players[askers[currentIdx] % players.length];
+    final responderName = players[targets[currentIdx] % players.length];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _title('Discuss!'),
+        passTopBar(),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          decoration: BoxDecoration(
+            color: card2,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: border),
+          ),
+          child: const Text(
+            'Discuss!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: ink,
+            ),
+          ),
+        ),
         const SizedBox(height: 10),
 
         // Light box background behind instruction text to prevent background blending
@@ -2268,68 +2346,73 @@ class _GamePageState extends State<GamePage> {
         ],
         const SizedBox(height: 16),
 
-        // Simplified Questioning Display (No counter, no 'Questioning Round', no ASKER/RESPONDER, no emojis)
+        // Simplified Questioning Display: vertical prompt with asker and responder in separate boxes
         _card(
           Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 decoration: BoxDecoration(
                   color: card2,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: yellow.withValues(alpha: 0.4), width: 1.5),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: yellow.withValues(alpha: 0.5), width: 1.5),
                 ),
                 child: Text(
-                  '$askerName asks $responderName',
+                  askerName,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: ink,
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'asks',
+                  style: TextStyle(
+                    color: muted,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                decoration: BoxDecoration(
+                  color: card2,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: border, width: 1.5),
+                ),
+                child: Text(
+                  responderName,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: ink,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
               const SizedBox(height: 16),
 
-              // Navigation Controls: Previous / Next (Infinite questioning support)
-              Row(
-                children: [
-                  if (questionTurnIdx > 0)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Sound.tap();
-                          setState(() => questionTurnIdx--);
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: ink,
-                          side: const BorderSide(color: border),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('Previous question', style: TextStyle(fontWeight: FontWeight.w700)),
-                      ),
-                    ),
-                  if (questionTurnIdx > 0) const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Sound.tap();
-                        setState(() => questionTurnIdx++);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: yellow,
-                        foregroundColor: const Color(0xFF1A1400),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Next question', style: TextStyle(fontWeight: FontWeight.w800)),
-                    ),
+              // Navigation Control: Next question only (Previous question removed per R4.3)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: advanceQuestionTurn,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: yellow,
+                    foregroundColor: const Color(0xFF1A1400),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                ],
+                  child: const Text('Next question', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                ),
               ),
             ],
           ),
@@ -2553,7 +2636,7 @@ class _GamePageState extends State<GamePage> {
   Widget _result() {
     final sorted = scores.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final isPlayersWin = fraudCaughtByMajority && !fraudGuessedCorrectly;
+    final isPlayersWin = fraudCaughtByMajority;
     final heroBannerText = isPlayersWin
         ? 'PLAYERS IN THE KNOW WIN!'
         : 'THE FRAUD ESCAPED!';
@@ -2643,7 +2726,13 @@ class _GamePageState extends State<GamePage> {
                       children: [
                         Text(categoryIcons[roundCat] ?? '📁', style: const TextStyle(fontSize: 14)),
                         const SizedBox(width: 6),
-                        Text(roundCat, style: const TextStyle(color: yellow, fontSize: 13, fontWeight: FontWeight.w800)),
+                        Flexible(
+                          child: Text(
+                            roundCat,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: yellow, fontSize: 13, fontWeight: FontWeight.w800),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -2666,10 +2755,13 @@ class _GamePageState extends State<GamePage> {
               const Text('SECRET WORD',
                   style: TextStyle(color: muted, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
               const SizedBox(height: 4),
-              Text(
-                roundWord,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: ink, letterSpacing: 0.5),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  roundWord,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: ink, letterSpacing: 0.5),
+                ),
               ),
               const SizedBox(height: 14),
               // Fraud Pill
@@ -2723,11 +2815,15 @@ class _GamePageState extends State<GamePage> {
                 final entry = sorted[rankIdx];
                 final pIdx = players.indexOf(entry.key);
                 final delta = pIdx != -1 ? (pointsEarnedThisRound[pIdx] ?? 0) : 0;
+                final targetIdx = pIdx != -1 ? playerVotes[pIdx] : null;
+                final votedTarget = (targetIdx != null && targetIdx >= 0 && targetIdx < players.length)
+                    ? players[targetIdx]
+                    : null;
                 final rankNum = '${rankIdx + 1}.';
 
                 return Container(
                   margin: const EdgeInsets.symmetric(vertical: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     color: rankIdx < 3 ? card2 : card2.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
@@ -2739,35 +2835,71 @@ class _GamePageState extends State<GamePage> {
                   child: Row(
                     children: [
                       Text(rankNum, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: yellow)),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          entry.key,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ink),
+                        flex: 3,
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 6,
+                          runSpacing: 2,
+                          children: [
+                            Text(
+                              entry.key,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ink),
+                            ),
+                            if (votedTarget != null)
+                              Text(
+                                'voted $votedTarget',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: muted,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (delta > 0) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                '+$delta',
-                                style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.w900, fontSize: 12),
-                              ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        flex: 2,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (delta > 0) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                    margin: const EdgeInsets.only(right: 6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      '+$delta',
+                                      style: const TextStyle(
+                                          color: Color(0xFF10B981),
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 12),
+                                    ),
+                                  ),
+                                ],
+                                Text(
+                                  '${entry.value} pts',
+                                  style: const TextStyle(
+                                      color: yellow,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 14),
+                                ),
+                              ],
                             ),
-                          ],
-                          Text('${entry.value} pts',
-                              style: const TextStyle(color: yellow, fontWeight: FontWeight.w900, fontSize: 14)),
-                        ],
+                          ),
+                        ),
                       ),
                     ],
                   ),

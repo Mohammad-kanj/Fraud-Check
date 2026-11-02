@@ -275,15 +275,16 @@ void main() {
 
         if (isFraud) {
           sawFraud = true;
+          expect(find.text('👁️ FRAUD'), findsOneWidget);
           expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
           expect(find.textContaining('blend in'), findsOneWidget);
-          expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_open_rounded), findsNothing);
         } else {
           sawSafe = true;
           expect(find.text('YOU ARE NOT THE FRAUD'), findsOneWidget);
           expect(find.text('YOUR SECRET WORD'), findsOneWidget);
           expect(find.text(roundWord), findsOneWidget);
-          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsNothing);
         }
 
         final isLast = i == passOrder.length - 1;
@@ -321,13 +322,14 @@ void main() {
 
         if (isFraud) {
           fraudCountObserved++;
+          expect(find.text('👁️ FRAUD'), findsOneWidget);
           expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
           expect(find.textContaining('There are 2 frauds this round!'), findsOneWidget);
-          expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_open_rounded), findsNothing);
         } else {
           safeCountObserved++;
           expect(find.text('YOU ARE NOT THE FRAUD'), findsOneWidget);
-          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsNothing);
         }
 
         final isLast = i == passOrder.length - 1;
@@ -371,19 +373,20 @@ void main() {
           expect(find.text('👁️ UNDERCOVER'), findsOneWidget);
           expect(find.text('YOUR DECOY WORD'), findsOneWidget);
           expect(find.text(undercoverWord), findsOneWidget);
-          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsNothing);
           expect(
             find.textContaining('Your word is slightly different'),
             findsOneWidget,
           );
         } else if (isFraud) {
           sawFraud = true;
+          expect(find.text('👁️ FRAUD'), findsOneWidget);
           expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
-          expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_open_rounded), findsNothing);
         } else {
           sawSafe = true;
           expect(find.text('YOU ARE NOT THE FRAUD'), findsOneWidget);
-          expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.lock_rounded), findsNothing);
         }
 
         final isLast = i == passOrder.length - 1;

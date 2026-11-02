@@ -275,7 +275,7 @@ void main() {
   // GROUP 3: RAPID TRANSITIONS & STATE STABILITY HARNESS
   // =========================================================================
   group('Challenger M3 R2: Rapid Transitions & State Stability', () {
-    testWidgets('ST.3.1: Rapid-fire Next and Previous question taps do not overflow or exceed bounds',
+    testWidgets('ST.3.1: Rapid-fire Next question taps advance infinite questioning without overflow or crash',
         (WidgetTester tester) async {
       await setupAndStartRound(tester, playerCount: 5);
       await passThroughAllReveals(tester, 5);
@@ -301,16 +301,15 @@ void main() {
       expect(state.questionTurnIdx, greaterThanOrEqualTo(5));
       expect(tester.takeException(), isNull);
 
-      // Rapidly tap "Previous question" until back at 0
-      while (find.text('Previous question').evaluate().isNotEmpty) {
-        final prevFinder = find.text('Previous question');
-        await tester.ensureVisible(prevFinder);
-        await tester.tap(prevFinder);
-        await tester.pump(const Duration(milliseconds: 10));
-      }
-      await tester.pump(const Duration(milliseconds: 100));
+      // Verify "Previous question" button is removed per R4.3
+      expect(find.text('Previous question'), findsNothing);
 
-      expect(state.questionTurnIdx, equals(0));
+      // Verify voting transition remains healthy
+      final voteFinder = find.text('Vote');
+      await tester.ensureVisible(voteFinder);
+      await tester.tap(voteFinder);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(state.screen.toString(), contains('vote'));
       expect(tester.takeException(), isNull);
     });
 

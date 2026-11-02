@@ -62,9 +62,9 @@ void main() {
       expect(settingsFinder, findsOneWidget);
       expect(rulesFinder, findsOneWidget);
 
-      // 2. Verify icons
-      expect(find.byIcon(Icons.settings_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.menu_book_rounded), findsOneWidget);
+      // 2. Verify icons removed (R1)
+      expect(find.byIcon(Icons.settings_rounded), findsNothing);
+      expect(find.byIcon(Icons.menu_book_rounded), findsNothing);
 
       // 3. Verify horizontal alignment in a Row
       final settingsRect = tester.getRect(settingsFinder);
@@ -84,7 +84,7 @@ void main() {
       // 4. Test Settings navigation
       await tester.tap(settingsFinder);
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Audio Feedback'), findsOneWidget);
+      expect(find.text('Audio'), findsOneWidget);
       expect(find.text('Screen Brightness'), findsOneWidget);
 
       // Return to main menu
@@ -189,12 +189,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     }
 
-    testWidgets('SET.1: Audio Feedback card renders volume icon, subtitle, toggleable SwitchListTile, and volume Slider',
+    testWidgets('SET.1: Audio card renders volume icon, subtitle, toggleable SwitchListTile, and volume Slider',
         (WidgetTester tester) async {
       await navigateToSettings(tester);
 
       expect(find.byIcon(Icons.volume_up_rounded), findsWidgets);
-      expect(find.text('Audio Feedback'), findsOneWidget);
+      expect(find.text('Audio'), findsOneWidget);
       expect(find.text('Playful arcade sound effects and master volume'), findsOneWidget);
 
       final switchFinder = find.widgetWithText(SwitchListTile, 'Sound effects');
@@ -392,12 +392,12 @@ void main() {
           state.guessPick = null;
         }
 
-        // Round points
+        // Round points (R6: caught fraud earns 50 on correct guess; voters earn 100)
         state.pointsEarnedThisRound = {
-          0: fraudCaught && !fraudGuessedCorrectly ? 100 : 0,
-          1: fraudCaught && !fraudGuessedCorrectly ? 100 : 0,
-          2: (!fraudCaught || fraudGuessedCorrectly) ? 100 : 0,
-          3: fraudCaught && !fraudGuessedCorrectly ? 100 : 0,
+          0: fraudCaught ? 100 : 0,
+          1: fraudCaught ? 100 : 0,
+          2: !fraudCaught ? 100 : (fraudGuessedCorrectly ? 50 : 0),
+          3: fraudCaught ? 100 : 0,
         };
 
         state.caughtFrauds = fraudCaught ? {fraudIndex} : <int>{};
@@ -457,15 +457,15 @@ void main() {
       final headlineA = tester.widget<Text>(find.text('THE FRAUD ESCAPED!'));
       expect(headlineA.style?.color, const Color(0xFFFF3B5C));
 
-      // Scenario B: Fraud caught by majority but stole the round by guessing secret word
+      // Scenario B: Fraud caught by majority and guessed secret word correctly (fraud loses round, receives 50 pts, voters receive 100 pts)
       await setupEndScreen(
         tester,
         fraudCaught: true,
         fraudGuessedCorrectly: true,
       );
 
-      expect(find.text('THE FRAUD ESCAPED!'), findsOneWidget);
-      expect(find.text('The fraud escapes!'), findsOneWidget);
+      expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
+      expect(find.text('The players in the know win!'), findsOneWidget);
     });
 
     testWidgets('END.3: Secret Word Reveal Card displays category squircle, mode badge, secret word, and fraud badge',
@@ -660,6 +660,39 @@ void main() {
       expect(expandedAncestor, findsWidgets);
 
       // Zero RenderFlex overflows
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('END.9: Leaderboard renders who each player voted for next to their name (R5)',
+        (WidgetTester tester) async {
+      await setupEndScreen(
+        tester,
+        fraudCaught: true,
+        fraudGuessedCorrectly: false,
+      );
+
+      // In setupEndScreen: state.playerVotes = {0: 2, 1: 2, 2: 0, 3: 2};
+      // Players are: 0: Alice, 1: Bob, 2: Charlie, 3: Diana
+      // Alice, Bob, and Diana voted Charlie; Charlie voted Alice
+      expect(find.text('voted Charlie'), findsNWidgets(3));
+      expect(find.text('voted Alice'), findsOneWidget);
+    });
+
+    testWidgets('END.10: Leaderboard defensively handles empty/null playerVotes without crash (R5)',
+        (WidgetTester tester) async {
+      final state = await setupEndScreen(
+        tester,
+        fraudCaught: true,
+        fraudGuessedCorrectly: false,
+      );
+      await tester.runAsync(() async {
+        state.playerVotes.clear();
+        state.setState(() {});
+      });
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Total Leaderboard'), findsOneWidget);
+      expect(find.textContaining('voted'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   });

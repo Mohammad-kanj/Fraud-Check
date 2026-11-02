@@ -298,7 +298,7 @@ void main() {
       await tester.tap(find.text('Settings'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Audio Feedback'), findsOneWidget);
+      expect(find.text('Audio'), findsOneWidget);
       expect(find.byType(Slider), findsNWidgets(2)); // Volume slider + Brightness slider
 
       // Verify Sound volume percentage text
@@ -346,7 +346,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
 
         expect(find.text('Settings'), findsOneWidget);
-        expect(find.text('Audio Feedback'), findsOneWidget);
+        expect(find.text('Audio'), findsOneWidget);
         expect(find.text('Screen Brightness'), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
@@ -387,7 +387,7 @@ void main() {
         });
         await tester.pump(const Duration(milliseconds: 500));
         expect(find.text('YOU ARE NOT THE FRAUD'), findsOneWidget);
-        expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+        expect(find.byIcon(Icons.lock_rounded), findsNothing);
         expect(tester.takeException(), isNull);
 
         // Test Fraud Role
@@ -397,7 +397,8 @@ void main() {
         });
         await tester.pump(const Duration(milliseconds: 500));
         expect(find.text('YOU ARE THE FRAUD'), findsOneWidget);
-        expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
+        expect(find.text('👁️ FRAUD'), findsOneWidget);
+        expect(find.byIcon(Icons.lock_open_rounded), findsNothing);
         expect(tester.takeException(), isNull);
 
         // Test Undercover Role
@@ -408,7 +409,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
         expect(find.text('YOU ARE UNDERCOVER'), findsOneWidget);
         expect(find.text('👁️ UNDERCOVER'), findsOneWidget);
-        expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+        expect(find.byIcon(Icons.lock_rounded), findsNothing);
         expect(tester.takeException(), isNull);
       });
 
