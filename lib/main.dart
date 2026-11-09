@@ -352,6 +352,174 @@ class FilmStripPainter extends CustomPainter {
       oldDelegate.progress != progress;
 }
 
+// ---------- Category Abstract Themes & Backdrop Painter ----------
+class CategoryTheme {
+  final List<Color> gradient;
+  final Color accent;
+  final Color iconBg;
+
+  const CategoryTheme({
+    required this.gradient,
+    required this.accent,
+    required this.iconBg,
+  });
+}
+
+const Map<String, CategoryTheme> categoryThemes = {
+  "Movies": CategoryTheme(
+    gradient: [Color(0xFF2E1338), Color(0xFF16091F)],
+    accent: Color(0xFFE040FB),
+    iconBg: Color(0xFF481C5C),
+  ),
+  "TV Shows": CategoryTheme(
+    gradient: [Color(0xFF0F2648), Color(0xFF08152B)],
+    accent: Color(0xFF00E5FF),
+    iconBg: Color(0xFF163E75),
+  ),
+  "Animals": CategoryTheme(
+    gradient: [Color(0xFF0E3324), Color(0xFF071C13)],
+    accent: Color(0xFF00E676),
+    iconBg: Color(0xFF18533B),
+  ),
+  "Leaders": CategoryTheme(
+    gradient: [Color(0xFF381B4B), Color(0xFF1A0A26)],
+    accent: Color(0xFFFFD54F),
+    iconBg: Color(0xFF562873),
+  ),
+  "Sports": CategoryTheme(
+    gradient: [Color(0xFF3E1C0A), Color(0xFF220D04)],
+    accent: Color(0xFFFF6D00),
+    iconBg: Color(0xFF632B0F),
+  ),
+  "Clothing": CategoryTheme(
+    gradient: [Color(0xFF39162D), Color(0xFF1C0916)],
+    accent: Color(0xFFFF4081),
+    iconBg: Color(0xFF5A2045),
+  ),
+  "Food": CategoryTheme(
+    gradient: [Color(0xFF3F2108), Color(0xFF220F02)],
+    accent: Color(0xFFFF9100),
+    iconBg: Color(0xFF663309),
+  ),
+  "Drinks": CategoryTheme(
+    gradient: [Color(0xFF092E38), Color(0xFF041920)],
+    accent: Color(0xFF1DE9B6),
+    iconBg: Color(0xFF104D5E),
+  ),
+  "Places": CategoryTheme(
+    gradient: [Color(0xFF132544), Color(0xFF081427)],
+    accent: Color(0xFF448AFF),
+    iconBg: Color(0xFF1E3A6B),
+  ),
+  "Professions": CategoryTheme(
+    gradient: [Color(0xFF1C2738), Color(0xFF0D1420)],
+    accent: Color(0xFF64B5F6),
+    iconBg: Color(0xFF2B3D59),
+  ),
+  "Video Games": CategoryTheme(
+    gradient: [Color(0xFF2D0F3F), Color(0xFF150421)],
+    accent: Color(0xFFD500F9),
+    iconBg: Color(0xFF4A166B),
+  ),
+  "Superheroes": CategoryTheme(
+    gradient: [Color(0xFF3B0C15), Color(0xFF1F040A)],
+    accent: Color(0xFFFF1744),
+    iconBg: Color(0xFF5F1221),
+  ),
+  "Musical Artists": CategoryTheme(
+    gradient: [Color(0xFF26123D), Color(0xFF120721)],
+    accent: Color(0xFFB388FF),
+    iconBg: Color(0xFF411E66),
+  ),
+  "Brands": CategoryTheme(
+    gradient: [Color(0xFF242633), Color(0xFF11121C)],
+    accent: Color(0xFFB0BEC5),
+    iconBg: Color(0xFF373A4F),
+  ),
+  "Household Items": CategoryTheme(
+    gradient: [Color(0xFF2F2119), Color(0xFF170F0B)],
+    accent: Color(0xFFFFB74D),
+    iconBg: Color(0xFF4D3525),
+  ),
+  "Vehicles": CategoryTheme(
+    gradient: [Color(0xFF122C38), Color(0xFF061720)],
+    accent: Color(0xFF00B0FF),
+    iconBg: Color(0xFF1B475C),
+  ),
+  "Cartoons & Anime": CategoryTheme(
+    gradient: [Color(0xFF3A0F2B), Color(0xFF1D0516)],
+    accent: Color(0xFFFF5252),
+    iconBg: Color(0xFF5D1744),
+  ),
+  "Landmarks": CategoryTheme(
+    gradient: [Color(0xFF332712), Color(0xFF1A1307)],
+    accent: Color(0xFFFFCA28),
+    iconBg: Color(0xFF533F1B),
+  ),
+  "Instruments": CategoryTheme(
+    gradient: [Color(0xFF2E1911), Color(0xFF170A06)],
+    accent: Color(0xFFFF8A65),
+    iconBg: Color(0xFF4B271A),
+  ),
+  "Desserts": CategoryTheme(
+    gradient: [Color(0xFF3B1524), Color(0xFF1F0913)],
+    accent: Color(0xFFFF80AB),
+    iconBg: Color(0xFF5F1E37),
+  ),
+};
+
+class AbstractCardPainter extends CustomPainter {
+  final Color accentColor;
+
+  AbstractCardPainter({required this.accentColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 1. Top-right subtle radial glow bloom
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(0.7, -0.6),
+        radius: 0.9,
+        colors: [
+          accentColor.withValues(alpha: 0.18),
+          accentColor.withValues(alpha: 0.0),
+        ],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, glowPaint);
+
+    // 2. Abstract orbital geometry in background
+    final ringPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..color = accentColor.withValues(alpha: 0.12);
+
+    canvas.drawCircle(
+      Offset(size.width * 0.85, size.height * 0.15),
+      size.width * 0.35,
+      ringPaint,
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.85, size.height * 0.15),
+      size.width * 0.55,
+      ringPaint,
+    );
+
+    // 3. Subtle angled laser shard line
+    final linePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..color = accentColor.withValues(alpha: 0.15);
+    canvas.drawLine(
+      Offset(size.width * 0.1, size.height * 0.85),
+      Offset(size.width * 0.45, size.height * 0.95),
+      linePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant AbstractCardPainter oldDelegate) =>
+      oldDelegate.accentColor != accentColor;
+}
 
 // ---------- Questioning Derangement Generator ----------
 class QuestionPairing {
@@ -1318,8 +1486,17 @@ class _GamePageState extends State<GamePage> {
         children: [
           _title('Pick a category'),
           const SizedBox(height: 6),
-          OutlinedButton(
+          OutlinedButton.icon(
             onPressed: () => go(Screen.mode),
+            icon: const Icon(Icons.swap_horiz_rounded, size: 15, color: yellow),
+            label: Text(
+              'Change mode (${selectedMode.title})',
+              style: const TextStyle(
+                color: yellow,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               minimumSize: Size.zero,
@@ -1327,14 +1504,6 @@ class _GamePageState extends State<GamePage> {
               side: const BorderSide(color: border),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               backgroundColor: card2,
-            ),
-            child: Text(
-              'Change mode (${selectedMode.title})',
-              style: const TextStyle(
-                color: yellow,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -1347,6 +1516,13 @@ class _GamePageState extends State<GamePage> {
             childAspectRatio: 1.25,
             children: categories.keys.map((cat) {
               final selected = chosenCat == cat;
+              final theme = categoryThemes[cat] ??
+                  const CategoryTheme(
+                    gradient: [Color(0xFF1E244E), Color(0xFF151838)],
+                    accent: yellow,
+                    iconBg: Color(0xFF252D60),
+                  );
+
               return InkWell(
                 onTap: () {
                   Sound.tap();
@@ -1354,71 +1530,98 @@ class _GamePageState extends State<GamePage> {
                   go(Screen.players);
                 },
                 borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: selected
-                          ? [const Color(0xFF233554), const Color(0xFF1B2844)]
-                          : [const Color(0xFF1E244E), const Color(0xFF151838)],
-                    ),
-                    border: Border.all(
-                      color: selected ? yellow : border,
-                      width: selected ? 2.2 : 1.2,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: selected
-                        ? [
-                            BoxShadow(
-                              color: yellow.withValues(alpha: 0.25),
-                              blurRadius: 10,
-                              spreadRadius: 1,
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Stack(
-                    children: [
-                      if (selected)
-                        const Positioned(
-                          top: 0,
-                          right: 0,
-                          child: Icon(
-                            Icons.check_circle_rounded,
-                            color: yellow,
-                            size: 20,
-                          ),
-                        ),
-                      Center(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF252D60),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  categoryIcons[cat] ?? '🎭',
-                                  style: const TextStyle(fontSize: 26),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              _categoryLabel(cat, size: 15),
-                            ],
-                          ),
-                        ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: selected
+                            ? [theme.gradient[0].withValues(alpha: 0.95), theme.gradient[1]]
+                            : theme.gradient,
                       ),
-                    ],
+                      border: Border.all(
+                        color: selected ? yellow : theme.accent.withValues(alpha: 0.35),
+                        width: selected ? 2.2 : 1.2,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        if (selected)
+                          BoxShadow(
+                            color: yellow.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            spreadRadius: 1,
+                          )
+                        else
+                          BoxShadow(
+                            color: theme.accent.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                      ],
+                    ),
+                    child: Stack(
+                      children: [
+                        // Abstract geometric backdrop
+                        Positioned.fill(
+                          child: CustomPaint(
+                            painter: AbstractCardPainter(accentColor: theme.accent),
+                          ),
+                        ),
+                        if (selected)
+                          const Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Icon(
+                              Icons.check_circle_rounded,
+                              color: yellow,
+                              size: 20,
+                            ),
+                          ),
+                        Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: theme.iconBg,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: theme.accent.withValues(alpha: 0.45),
+                                        width: 1.0,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: theme.accent.withValues(alpha: 0.25),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      categoryIcons[cat] ?? '🎭',
+                                      style: const TextStyle(fontSize: 24),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _categoryLabel(cat, size: 15),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
