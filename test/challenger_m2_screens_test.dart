@@ -352,6 +352,39 @@ void main() {
       expect(find.text('Players'), findsOneWidget);
       expect(find.text('Animals'), findsOneWidget);
     });
+
+    testWidgets('CAT.5: Category selection resets upon returning to main menu and re-entering game mode',
+        (WidgetTester tester) async {
+      await navigateToCategory(tester);
+
+      final dynamic state = tester.state(find.byType(GamePage));
+
+      // 1. Select 'Movies'
+      await tester.tap(find.text('Movies'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(state.chosenCat, 'Movies');
+      expect(find.text('Players'), findsOneWidget);
+
+      // 2. Return to main menu
+      await tester.tap(find.text('Back to main menu'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('FRAUD CHECK'), findsOneWidget);
+      expect(state.chosenCat, isNull);
+
+      // 3. Press Play -> Select a game mode
+      await tester.tap(find.text('Play'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Select Game Mode'), findsOneWidget);
+
+      await tester.tap(find.text('Classic'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // 4. Assert in Pick a category screen, no category has selected mark
+      expect(find.text('Pick a category'), findsOneWidget);
+      expect(state.chosenCat, isNull);
+      expect(find.byIcon(Icons.check_circle_rounded), findsNothing,
+          reason: 'No category should retain a selected checkmark mark when re-entering');
+    });
   });
 
   // =========================================================================

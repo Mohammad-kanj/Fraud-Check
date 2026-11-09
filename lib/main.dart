@@ -622,7 +622,14 @@ class _GamePageState extends State<GamePage> {
     super.dispose();
   }
 
-  void go(Screen s) => setState(() => screen = s);
+  void go(Screen s) {
+    setState(() {
+      if (s == Screen.home || s == Screen.mode) {
+        chosenCat = null;
+      }
+      screen = s;
+    });
+  }
 
   void setPlayerCount(int n) {
     setState(() {
@@ -1407,6 +1414,7 @@ class _GamePageState extends State<GamePage> {
                   Sound.tap();
                   setState(() {
                     selectedMode = m;
+                    chosenCat = null;
                     if (playerCount < m.minPlayers) {
                       setPlayerCount(m.minPlayers);
                     }
@@ -1518,85 +1526,24 @@ class _GamePageState extends State<GamePage> {
               mainAxisSpacing: 10,
               childAspectRatio: 1.25,
               children: categories.keys.map((cat) {
-              final selected = chosenCat == cat;
-              final imageAsset = categoryImages[cat];
+                final selected = chosenCat == cat;
+                final imageAsset = categoryImages[cat];
 
-              return InkWell(
-                onTap: () {
-                  Sound.tap();
-                  setState(() => chosenCat = cat);
-                  go(Screen.players);
-                },
-                borderRadius: BorderRadius.circular(16),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: selected
-                        ? [
-                            BoxShadow(
-                              color: yellow.withValues(alpha: 0.45),
-                              blurRadius: 14,
-                              spreadRadius: 2,
-                            ),
-                          ]
-                        : [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.35),
-                              blurRadius: 6,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      // Pixel art category button image
-                      if (imageAsset != null)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.asset(
-                            imageAsset,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      // Selection border outline
-                      if (selected)
-                        Positioned.fill(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: yellow, width: 2.4),
-                            ),
-                          ),
-                        ),
-                      if (selected)
-                        const Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Icon(
-                            Icons.check_circle_rounded,
-                            color: yellow,
-                            size: 20,
-                          ),
-                        ),
-                      // Semantic & programmatic label for accessibility & widget finders
-                      Positioned(
-                        bottom: 8,
-                        left: 8,
-                        right: 8,
-                        child: Center(
-                          child: Opacity(
-                            opacity: 0.001,
-                            child: _categoryLabel(cat, size: 15),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
+                return _CategoryCard(
+                  key: ValueKey(cat),
+                  cat: cat,
+                  selected: selected,
+                  imageAsset: imageAsset,
+                  semanticLabel: _categoryLabel(cat, size: 15),
+                  onTap: () {
+                    Sound.tap();
+                    setState(() => chosenCat = cat);
+                    Future.delayed(const Duration(milliseconds: 70), () {
+                      if (mounted) go(Screen.players);
+                    });
+                  },
+                );
+              }).toList(),
           ),
         ),
         const SizedBox(height: 16),
@@ -3129,6 +3076,120 @@ class _GamePageState extends State<GamePage> {
           go(Screen.home);
         }),
       ],
+    );
+  }
+}
+
+
+class _CategoryCard extends StatefulWidget {
+  final String cat;
+  final bool selected;
+  final String? imageAsset;
+  final Widget semanticLabel;
+  final VoidCallback onTap;
+
+  const _CategoryCard({
+    super.key,
+    required this.cat,
+    required this.selected,
+    required this.imageAsset,
+    required this.semanticLabel,
+    required this.onTap,
+  });
+
+  @override
+  State<_CategoryCard> createState() => _CategoryCardState();
+}
+
+class _CategoryCardState extends State<_CategoryCard> {
+  bool _pressed = false;
+
+  void _handleTap() {
+    setState(() => _pressed = true);
+    widget.onTap();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isHighlighted = widget.selected || _pressed;
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.93 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOutCubic,
+        child: InkWell(
+          onTap: _handleTap,
+          borderRadius: BorderRadius.circular(16),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: isHighlighted
+                  ? [
+                      BoxShadow(
+                        color: yellow.withValues(alpha: 0.55),
+                        blurRadius: 14,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+            ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (widget.imageAsset != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      widget.imageAsset!,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                if (widget.selected || _pressed)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: yellow, width: 2.4),
+                      ),
+                    ),
+                  ),
+                if (widget.selected)
+                  const Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Icon(
+                      Icons.check_circle_rounded,
+                      color: yellow,
+                      size: 20,
+                    ),
+                  ),
+                Positioned(
+                  bottom: 8,
+                  left: 8,
+                  right: 8,
+                  child: Center(
+                    child: Opacity(
+                      opacity: 0.001,
+                      child: widget.semanticLabel,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
