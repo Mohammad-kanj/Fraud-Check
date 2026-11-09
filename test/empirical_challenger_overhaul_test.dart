@@ -108,7 +108,7 @@ void main() {
       expect(titleFinder, findsOneWidget);
 
       final titleWidget = tester.widget<Text>(titleFinder);
-      expect(titleWidget.style?.fontFamily, GoogleFonts.pixelifySans().fontFamily);
+      expect(titleWidget.style?.fontFamily, GoogleFonts.archivo().fontFamily);
       expect(titleWidget.style?.fontWeight, FontWeight.w900);
       expect(titleWidget.style?.shadows, isNotNull);
 

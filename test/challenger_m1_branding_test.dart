@@ -23,8 +23,8 @@ void main() {
     });
   }
 
-  group('Challenger M1: Typography & Pixelify Sans Font Family Conformance (F3)', () {
-    testWidgets('ThemeData textTheme explicitly applies GoogleFonts.pixelifySans to all 15 TextTheme styles',
+  group('Challenger M1: Typography & Archivo Font Family Conformance (F3)', () {
+    testWidgets('ThemeData textTheme explicitly applies GoogleFonts.archivo to all 15 TextTheme styles',
         (WidgetTester tester) async {
       setMobileScreen(tester);
       await tester.pumpWidget(const FraudCheckApp());
@@ -65,13 +65,13 @@ void main() {
         );
         expect(
           entry.value!.fontFamily!.toLowerCase(),
-          contains('pixelifysans'),
-          reason: '${entry.key} font family "${entry.value!.fontFamily}" must contain "pixelifysans"',
+          contains('archivo'),
+          reason: '${entry.key} font family "${entry.value!.fontFamily}" must contain "archivo"',
         );
       }
     });
 
-    testWidgets('DefaultTextStyle in widget tree inherits GoogleFonts PixelifySans',
+    testWidgets('DefaultTextStyle in widget tree inherits GoogleFonts Archivo',
         (WidgetTester tester) async {
       setMobileScreen(tester);
       await tester.pumpWidget(const FraudCheckApp());
@@ -81,8 +81,8 @@ void main() {
       final defaultStyle = DefaultTextStyle.of(context).style;
       expect(
         defaultStyle.fontFamily?.toLowerCase(),
-        contains('pixelifysans'),
-        reason: 'DefaultTextStyle must resolve to PixelifySans font family',
+        contains('archivo'),
+        reason: 'DefaultTextStyle must resolve to Archivo font family',
       );
     });
 
@@ -99,7 +99,7 @@ void main() {
         if (textWidget.style?.fontFamily != null) {
           expect(
             textWidget.style!.fontFamily!.toLowerCase(),
-            contains('pixelifysans'),
+            contains('archivo'),
             reason: 'Text widget with text "${textWidget.data}" has foreign fontFamily: ${textWidget.style!.fontFamily}',
           );
         }

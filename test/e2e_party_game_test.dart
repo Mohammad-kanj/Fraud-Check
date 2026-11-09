@@ -108,22 +108,22 @@ void main() {
           reason: 'Logo character cutout from assets/logo.png must be rendered on the main screen');
     });
 
-    testWidgets('T1.3: F3 - Application theme configures PixelifySans typography across the app',
+    testWidgets('T1.3: F3 - Application theme configures Archivo typography across the app',
         (WidgetTester tester) async {
       setMobileScreen(tester);
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
-      // F3 / R1: All text rendered using PixelifySans font
+      // F3 / R1: All text rendered using Archivo font
       final gamePageElement = tester.element(find.byType(GamePage));
       final theme = Theme.of(gamePageElement);
       final bodyFont = theme.textTheme.bodyMedium?.fontFamily ?? '';
       final titleFont = theme.textTheme.titleLarge?.fontFamily ?? '';
 
-      final isPixelifyConfigured = bodyFont.toLowerCase().contains('pixelifysans') ||
-          titleFont.toLowerCase().contains('pixelifysans');
-      expect(isPixelifyConfigured, isTrue,
-          reason: 'Typography across entire game must use the Pixelify Sans Google font');
+      final isArchivoConfigured = bodyFont.toLowerCase().contains('archivo') ||
+          titleFont.toLowerCase().contains('archivo');
+      expect(isArchivoConfigured, isTrue,
+          reason: 'Typography across entire game must use the Archivo Google font');
     });
 
     testWidgets('T1.4: F4 - Legacy English subtitle is absent from Main Menu',

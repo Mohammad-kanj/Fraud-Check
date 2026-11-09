@@ -158,8 +158,8 @@ class FraudCheckApp extends StatelessWidget {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: bg,
         colorScheme: const ColorScheme.dark(primary: yellow, surface: card),
-        fontFamily: GoogleFonts.pixelifySans().fontFamily,
-        textTheme: GoogleFonts.pixelifySansTextTheme(
+        fontFamily: GoogleFonts.archivo().fontFamily,
+        textTheme: GoogleFonts.archivoTextTheme(
           ThemeData.dark().textTheme.apply(bodyColor: ink, displayColor: ink),
         ),
       ),
@@ -247,7 +247,7 @@ class FilmStripPainter extends CustomPainter {
       color: const Color(0xFFFFD15C).withValues(alpha: 0.45),
       fontSize: 26,
       fontWeight: FontWeight.w900,
-      fontFamily: GoogleFonts.pixelifySans().fontFamily,
+      fontFamily: GoogleFonts.archivo().fontFamily,
     );
     final textPainter = TextPainter(
       text: TextSpan(text: '?', style: textStyle),
@@ -1326,7 +1326,7 @@ class _GamePageState extends State<GamePage> {
             'FRAUD CHECK',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: GoogleFonts.pixelifySans().fontFamily,
+              fontFamily: GoogleFonts.archivo().fontFamily,
               fontSize: 44,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
@@ -1507,14 +1507,17 @@ class _GamePageState extends State<GamePage> {
             ),
           ),
           const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 1.25,
-            children: categories.keys.map((cat) {
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: GridView.count(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.25,
+              children: categories.keys.map((cat) {
               final selected = chosenCat == cat;
               final imageAsset = categoryImages[cat];
 
@@ -1595,7 +1598,8 @@ class _GamePageState extends State<GamePage> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 16),
+        ),
+        const SizedBox(height: 16),
           _secondary('Back to main menu', () => go(Screen.home)),
         ],
       );
