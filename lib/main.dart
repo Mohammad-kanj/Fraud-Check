@@ -158,8 +158,8 @@ class FraudCheckApp extends StatelessWidget {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: bg,
         colorScheme: const ColorScheme.dark(primary: yellow, surface: card),
-        fontFamily: GoogleFonts.archivo().fontFamily,
-        textTheme: GoogleFonts.archivoTextTheme(
+        fontFamily: GoogleFonts.pixelifySans().fontFamily,
+        textTheme: GoogleFonts.pixelifySansTextTheme(
           ThemeData.dark().textTheme.apply(bodyColor: ink, displayColor: ink),
         ),
       ),
@@ -247,7 +247,7 @@ class FilmStripPainter extends CustomPainter {
       color: const Color(0xFFFFD15C).withValues(alpha: 0.45),
       fontSize: 26,
       fontWeight: FontWeight.w900,
-      fontFamily: GoogleFonts.archivo().fontFamily,
+      fontFamily: GoogleFonts.pixelifySans().fontFamily,
     );
     final textPainter = TextPainter(
       text: TextSpan(text: '?', style: textStyle),
@@ -1326,7 +1326,7 @@ class _GamePageState extends State<GamePage> {
             'FRAUD CHECK',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: GoogleFonts.archivo().fontFamily,
+              fontFamily: GoogleFonts.pixelifySans().fontFamily,
               fontSize: 44,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,

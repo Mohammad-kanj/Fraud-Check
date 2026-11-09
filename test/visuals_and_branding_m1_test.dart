@@ -99,7 +99,7 @@ void main() {
       await expectLater(Sound.lose(), completes);
     });
 
-    testWidgets('App theme configures GoogleFonts Archivo text theme',
+    testWidgets('App theme configures GoogleFonts PixelifySans text theme',
         (WidgetTester tester) async {
       setMobileScreen(tester);
       await tester.pumpWidget(const FraudCheckApp());
@@ -111,7 +111,7 @@ void main() {
       expect(theme!.scaffoldBackgroundColor, bg);
       expect(theme.colorScheme.primary, yellow);
       expect(theme.colorScheme.surface, card);
-      expect(theme.textTheme.bodyMedium?.fontFamily, contains('Archivo'));
+      expect(theme.textTheme.bodyMedium?.fontFamily?.toLowerCase(), contains('pixelifysans'));
     });
   });
 }
