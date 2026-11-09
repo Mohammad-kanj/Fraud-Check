@@ -309,7 +309,7 @@ void main() {
 
       // RESULTS SCREEN - ROUND 2
       expect(state.screen.toString(), contains('result'));
-      expect(find.text('THE FRAUD WINS'), findsOneWidget);
+      expect(find.text('THE FRAUD ESCAPED'), findsOneWidget);
 
       // Round 2 Outcome:
       // The fraud escaped! The fraud earned 100 points this round.

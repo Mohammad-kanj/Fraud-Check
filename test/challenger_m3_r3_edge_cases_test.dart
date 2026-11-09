@@ -34,9 +34,9 @@ void main() {
         state.roundWord = 'Falafel';
         state.fraudIndices = {3}; // David is fraud
         state.undercoverIndex = null;
-        // Votes: Alice & Bob vote David (2 votes), Charlie & David vote Alice (2 votes)
-        state.playerVotes = {0: 3, 1: 3, 2: 0, 3: 0};
-        state.voteCounts = {3: 2, 0: 2};
+        // Votes: Alice votes David (1 vote), Bob, Charlie & David vote Alice (3 votes)
+        state.playerVotes = {0: 3, 1: 0, 2: 0, 3: 0};
+        state.voteCounts = {3: 1, 0: 3};
         state.scores.clear();
         state.scores.addAll({'Alice': 0, 'Bob': 0, 'Charlie': 0, 'David': 0});
         state.tallyVotes();
@@ -50,9 +50,9 @@ void main() {
       expect(state.scores['Bob'], equals(0));
       expect(state.scores['Charlie'], equals(0));
 
-      expect(find.text('THE FRAUD WINS'), findsOneWidget);
-      expect(find.text('voted David'), findsNWidgets(2));
-      expect(find.text('voted Alice'), findsNWidgets(2));
+      expect(find.text('THE FRAUD ESCAPED'), findsOneWidget);
+      expect(find.text('voted David'), findsNWidgets(1));
+      expect(find.text('voted Alice'), findsNWidgets(3));
       expect(tester.takeException(), isNull);
     });
 
@@ -84,7 +84,7 @@ void main() {
       expect(state.screen, Screen.result);
       expect(state.fraudCaughtByMajority, isFalse);
       expect(state.scores['Charlie'], equals(100));
-      expect(find.text('THE FRAUD WINS'), findsOneWidget);
+      expect(find.text('THE FRAUD ESCAPED'), findsOneWidget);
       expect(find.textContaining('voted'), findsNothing);
       expect(tester.takeException(), isNull);
     });

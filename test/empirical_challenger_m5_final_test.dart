@@ -425,7 +425,7 @@ void main() {
       }
 
       // Fraud escaped!
-      expect(find.text('THE FRAUD WINS'), findsOneWidget);
+      expect(find.text('THE FRAUD ESCAPED'), findsOneWidget);
       final Map<String, int> scoresAfterR2 = (state.scores as Map<String, int>);
       expect(scoresAfterR2[players[fraud2]], equals((scoresAfterR1[players[fraud2]] ?? 0) + 100));
     });

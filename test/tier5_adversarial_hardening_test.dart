@@ -636,7 +636,7 @@ void main() {
   // GROUP 6: VOTING MAJORITY LOGIC & SCORING HARDENING
   // =========================================================================
   group('Group 6: Voting Majority Logic & Fraud Check Scoring Hardening', () {
-    testWidgets('ADV-S1: Exact 50% vote threshold in 4 players (2 votes) does NOT catch fraud',
+    testWidgets('ADV-S1: Exact 50% vote threshold in 4 players (2 votes) DOES catch fraud by majority',
         (WidgetTester tester) async {
       await setupAndStartRound(tester, modeTitle: 'Classic', category: 'Food', targetPlayers: 4);
       await passThroughAllReveals(tester, 4);
@@ -651,7 +651,7 @@ void main() {
       final targetA = fraudIdx;
       final targetB = safePlayers[0];
 
-      // 2 votes for targetA (fraud), 2 votes for targetB (safe)
+      // 2 votes for targetA (fraud), 2 votes for targetB (safe) -> 2 >= 4/2, fraud caught!
       for (int v = 0; v < 4; v++) {
         await tester.tap(find.text('Tap to vote'));
         await tester.pump(const Duration(milliseconds: 100));
@@ -673,11 +673,10 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
       }
 
-      // Fraud was NOT caught -> directly to Result screen (no Guess screen)
-      expect(find.text('THE FRAUD WINS'), findsOneWidget);
-      final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
-      expect(pointsEarned[fraudIdx], equals(100),
-          reason: 'Escaping fraud with <= 50% votes must earn 100 points');
+      // Fraud was CAUGHT by majority (>= 50%) -> transitions to Guess screen
+      expect(find.text('Last chance!'), findsOneWidget);
+      expect(state.screen, Screen.guess);
+      expect(state.fraudCaughtByMajority, isTrue);
     });
 
     testWidgets('ADV-S2: Caught fraud guesses secret word correctly: fraud loses round (50 pts) and voters earn 100 pts',
@@ -772,7 +771,7 @@ void main() {
       await tester.tap(find.text('Confirm guess'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
+      expect(find.text('SPLIT OUTCOME: 1 CAUGHT, 1 ESCAPED'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       for (final safeVoter in safePlayers) {
         expect(pointsEarned[safeVoter], equals(100),

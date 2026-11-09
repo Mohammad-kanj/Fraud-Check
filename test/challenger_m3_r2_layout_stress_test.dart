@@ -143,7 +143,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(tester.takeException(), isNull);
-      expect(find.text('THE FRAUD WINS'), findsOneWidget);
+      expect(find.text('THE FRAUD ESCAPED'), findsOneWidget);
     });
 
     testWidgets('VP.3: Undercover role pill rendering and scaling across viewports', (WidgetTester tester) async {

@@ -167,7 +167,7 @@ void main() {
 
       expect(state.screen, Screen.result);
       expect(state.fraudCaughtByMajority, isFalse);
-      expect(find.text('THE UNDERCOVER WINS'), findsOneWidget);
+      expect(find.text('THE UNDERCOVER ESCAPED'), findsOneWidget);
       expect(state.scores['Bob'], 100);
       expect(state.scores['Alice'], 0);
       expect(state.scores['Charlie'], 0);
@@ -203,7 +203,7 @@ void main() {
       expect(find.text('Lion'), findsOneWidget);
     });
 
-    testWidgets('Fraud wins box shows single sentence "THE FRAUD WINS" with golden text and no text under', (tester) async {
+    testWidgets('Fraud wins box shows single sentence "THE FRAUD ESCAPED" with golden text and no text under', (tester) async {
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -221,11 +221,11 @@ void main() {
       });
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('THE FRAUD WINS'), findsOneWidget);
-      final textWidget = tester.widget<Text>(find.text('THE FRAUD WINS'));
+      expect(find.text('THE FRAUD ESCAPED'), findsOneWidget);
+      final textWidget = tester.widget<Text>(find.text('THE FRAUD ESCAPED'));
       expect(textWidget.style?.color, equals(yellow));
       // Ensure old multi-line texts are absent
-      expect(find.text('THE FRAUD ESCAPED!'), findsNothing);
+      expect(find.text('THE FRAUD WINS!'), findsNothing);
       expect(find.text('The fraud wins!'), findsNothing);
       expect(find.textContaining('takes the round'), findsNothing);
     });
@@ -240,6 +240,7 @@ void main() {
         state.roundCat = 'Food';
         state.roundWord = 'Falafel';
         state.fraudIndices = {0};
+        state.caughtFrauds.addAll({0});
         state.scores.addAll({'Player 1': 0, 'Player 2': 100, 'Player 3': 100});
         state.pointsEarnedThisRound.addAll({1: 100, 2: 100});
         state.playerVotes.addAll({0: 1, 1: 0, 2: 0});

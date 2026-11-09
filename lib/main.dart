@@ -656,13 +656,13 @@ class _GamePageState extends State<GamePage> {
     final majorityThreshold = players.length / 2;
 
     for (final f in fraudIndices) {
-      if ((voteCounts[f] ?? 0) > majorityThreshold) {
+      if ((voteCounts[f] ?? 0) >= majorityThreshold) {
         caughtFrauds.add(f);
       }
     }
 
     if (undercoverIndex != null) {
-      if ((voteCounts[undercoverIndex!] ?? 0) > majorityThreshold) {
+      if ((voteCounts[undercoverIndex!] ?? 0) >= majorityThreshold) {
         caughtFrauds.add(undercoverIndex!);
       }
     }
@@ -690,13 +690,13 @@ class _GamePageState extends State<GamePage> {
       }
       // If undercover survived without majority votes against them, undercover earns points
       if (undercoverIndex != null &&
-          (voteCounts[undercoverIndex!] ?? 0) <= majorityThreshold) {
+          (voteCounts[undercoverIndex!] ?? 0) < majorityThreshold) {
         scores[players[undercoverIndex!]] =
             (scores[players[undercoverIndex!]] ?? 0) + roundPoints;
         pointsEarnedThisRound[undercoverIndex!] = roundPoints;
       }
       screen = Screen.result;
-      Sound.lose();
+      Sound.win();
     }
   }
 
@@ -773,14 +773,24 @@ class _GamePageState extends State<GamePage> {
       guessPick != null && guessOptions[guessPick!] == roundWord;
 
   String get resultTitle {
-    if (!fraudCaughtByMajority) {
+    final totalAgents = (selectedMode.fraudCount > 0 ? selectedMode.fraudCount : 0) +
+        (selectedMode.hasUndercover ? 1 : 0);
+    final caughtCount = caughtFrauds.length;
+
+    if (caughtCount == 0) {
       if (selectedMode.fraudCount == 0 && selectedMode.hasUndercover) {
-        return 'THE UNDERCOVER WINS';
+        return 'THE UNDERCOVER ESCAPED';
       }
-      return selectedMode.fraudCount > 1
-          ? 'THE FRAUDS WIN'
-          : 'THE FRAUD WINS';
+      return (selectedMode.fraudCount > 1 ||
+              (selectedMode.fraudCount > 0 && selectedMode.hasUndercover))
+          ? 'THE FRAUDS ESCAPED'
+          : 'THE FRAUD ESCAPED';
     }
+
+    if (totalAgents >= 2 && caughtCount < totalAgents) {
+      return 'SPLIT OUTCOME: 1 CAUGHT, 1 ESCAPED';
+    }
+
     return 'THE PLAYERS WIN';
   }
 
@@ -924,46 +934,55 @@ class _GamePageState extends State<GamePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        const Positioned.fill(child: FilmStripBackground()),
-        Scaffold(
-          backgroundColor: Colors.transparent,
-          body: SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
-                  child: switch (screen) {
-                    Screen.home => _home(),
-                    Screen.mode => _mode(),
-                    Screen.category => _category(),
-                    Screen.players => _players(),
-                    Screen.settings => _settings(),
-                    Screen.rules => _rules(),
-                    Screen.pass => _pass(),
-                    Screen.reveal => _reveal(),
-                    Screen.discuss => _discuss(),
-                    Screen.vote => _vote(),
-                    Screen.guess => _guess(),
-                    Screen.result => _result(),
-                  },
+    return PopScope(
+      canPop: screen == Screen.home,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (screen != Screen.home) {
+          go(Screen.home);
+        }
+      },
+      child: Stack(
+        children: [
+          const Positioned.fill(child: FilmStripBackground()),
+          Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
+                    child: switch (screen) {
+                      Screen.home => _home(),
+                      Screen.mode => _mode(),
+                      Screen.category => _category(),
+                      Screen.players => _players(),
+                      Screen.settings => _settings(),
+                      Screen.rules => _rules(),
+                      Screen.pass => _pass(),
+                      Screen.reveal => _reveal(),
+                      Screen.discuss => _discuss(),
+                      Screen.vote => _vote(),
+                      Screen.guess => _guess(),
+                      Screen.result => _result(),
+                    },
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        // In-app visual overlay brightness control (dimming/brightening cleanly without device permissions)
-        if (brightness < 1.0)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: Container(
-                color: Colors.black.withValues(alpha: (1.0 - brightness) * 0.75),
+          // In-app visual overlay brightness control (dimming/brightening cleanly without device permissions)
+          if (brightness < 1.0)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  color: Colors.black.withValues(alpha: (1.0 - brightness) * 0.75),
+                ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1297,44 +1316,29 @@ class _GamePageState extends State<GamePage> {
   Widget _category() => Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Wrap(
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                decoration: BoxDecoration(
-                  color: card2,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: border),
-                ),
-                child: Text('Mode: ${selectedMode.title}',
-                    style: const TextStyle(
-                        color: yellow, fontSize: 13, fontWeight: FontWeight.w800)),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: card2,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: border),
-                ),
-                child: Text(
-                  '${categories.length} Categories',
-                  style: const TextStyle(
-                    color: muted,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
           _title('Pick a category'),
           const SizedBox(height: 6),
+          OutlinedButton.icon(
+            onPressed: () => go(Screen.mode),
+            icon: const Icon(Icons.swap_horiz_rounded, size: 15, color: yellow),
+            label: Text(
+              'Change mode (${selectedMode.title})',
+              style: const TextStyle(
+                color: yellow,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              side: const BorderSide(color: border),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              backgroundColor: card2,
+            ),
+          ),
+          const SizedBox(height: 12),
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
@@ -1439,8 +1443,6 @@ class _GamePageState extends State<GamePage> {
             }).toList(),
           ),
           const SizedBox(height: 16),
-          _secondary('Change mode', () => go(Screen.mode)),
-          const SizedBox(height: 8),
           _secondary('Back to main menu', () => go(Screen.home)),
         ],
       );
@@ -1863,7 +1865,7 @@ class _GamePageState extends State<GamePage> {
               SizedBox(height: 6),
               Text(
                 '• Secret Vote: Every player votes privately for who they suspect is the fraud.\n\n'
-                '• Last chance: If a fraud is caught by majority vote (> 50%), they get 4 word options to guess the secret word.\n\n'
+                '• Last chance: If a fraud is caught by majority vote (>= 50%), they get 4 word options to guess the secret word.\n\n'
                 '• Caught Fraud guesses correctly: The fraud earns 50 points, but loses the round! All players who voted for that fraud earn +100 points.\n\n'
                 '• Caught Fraud misses guess: The fraud earns 0 points. All players who voted for that fraud earn +100 points!\n\n'
                 '• Fraud Escapes: If no fraud receives majority votes, frauds win the round and earn +100 points each.\n\n'
@@ -1872,8 +1874,6 @@ class _GamePageState extends State<GamePage> {
               ),
             ],
           )),
-          const SizedBox(height: 8),
-          _primary('Play now', () => go(Screen.mode)),
           const SizedBox(height: 8),
           _secondary('Back to main menu', () => go(Screen.home)),
         ],
@@ -2733,7 +2733,15 @@ class _GamePageState extends State<GamePage> {
   Widget _result() {
     final sorted = scores.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final isPlayersWin = fraudCaughtByMajority;
+    final totalAgents = (selectedMode.fraudCount > 0 ? selectedMode.fraudCount : 0) +
+        (selectedMode.hasUndercover ? 1 : 0);
+    final isSplit = totalAgents >= 2 &&
+        caughtFrauds.isNotEmpty &&
+        caughtFrauds.length < totalAgents;
+    final isPlayersWin = caughtFrauds.length == totalAgents;
+    final bannerBorderColor = isSplit
+        ? const Color(0xFFF59E0B)
+        : (isPlayersWin ? const Color(0xFF10B981) : const Color(0xFFFF3B5C));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -2746,7 +2754,7 @@ class _GamePageState extends State<GamePage> {
             color: card2,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isPlayersWin ? const Color(0xFF10B981) : const Color(0xFFFF3B5C),
+              color: bannerBorderColor,
               width: 2,
             ),
           ),
@@ -2954,7 +2962,7 @@ class _GamePageState extends State<GamePage> {
         const SizedBox(height: 16),
 
         // d. Continue Button: Preserves cumulative scores and prompts back to category selection
-        _primaryWithIcon('Continue', Icons.arrow_forward_rounded, () {
+        _primary('Continue', () {
           Sound.tap();
           go(Screen.category);
         }),

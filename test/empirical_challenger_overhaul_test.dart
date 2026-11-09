@@ -472,6 +472,7 @@ void main() {
         state.roundCat = 'Food';
         state.roundWord = 'Pizza';
         state.fraudIndices = {1};
+        state.caughtFrauds.addAll({1});
         state.fraudCaughtByMajority = true;
         state.players = ['Player 1', 'Player 2', 'Player 3', 'Player 4'];
         state.scores.addAll({'Player 1': 100, 'Player 2': 0, 'Player 3': 100, 'Player 4': 100});

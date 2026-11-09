@@ -160,9 +160,9 @@ void main() {
         state.roundWord = 'Pizza';
         state.fraudIndices = {3}; // David is fraud
         state.undercoverIndex = null;
-        // Votes tied 2 vs 2 (majority threshold for 4 is > 2, so 2 votes is not majority)
-        state.playerVotes = {0: 3, 1: 3, 2: 0, 3: 0};
-        state.voteCounts = {3: 2, 0: 2};
+        // Votes: Alice votes David (1 vote), Bob, Charlie, David vote Alice (3 votes)
+        state.playerVotes = {0: 3, 1: 0, 2: 0, 3: 0};
+        state.voteCounts = {3: 1, 0: 3};
         state.scores.clear();
         state.scores.addAll({'Alice': 100, 'Bob': 50, 'Charlie': 20, 'David': 0});
         state.tallyVotes();
@@ -181,12 +181,12 @@ void main() {
       expect(state.scores['Charlie'], equals(20));
 
       // 3. Verify Defeat Banner text
-      expect(find.text('THE FRAUD WINS'), findsOneWidget);
+      expect(find.text('THE FRAUD ESCAPED'), findsOneWidget);
 
       // 4. Verify Leaderboard shows +100 for fraud, nothing for safe players
       expect(find.text('+100'), findsOneWidget); // Only David
-      expect(find.text('voted David'), findsNWidgets(2));
-      expect(find.text('voted Alice'), findsNWidgets(2));
+      expect(find.text('voted David'), findsNWidgets(1));
+      expect(find.text('voted Alice'), findsNWidgets(3));
     });
 
     // -------------------------------------------------------------------------
@@ -329,8 +329,8 @@ void main() {
       expect(state.scores['Eve'], equals(100));
       expect(state.pointsEarnedThisRound[4], equals(100));
 
-      // Group victory banner
-      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
+      // Split outcome banner: 1 fraud caught, 1 fraud escaped
+      expect(find.text('SPLIT OUTCOME: 1 CAUGHT, 1 ESCAPED'), findsOneWidget);
       expect(find.text('voted Charlie'), findsNWidgets(3)); // Alice, Bob, Eve
       expect(find.text('voted David'), findsOneWidget); // Charlie
       expect(find.text('voted Alice'), findsOneWidget); // David

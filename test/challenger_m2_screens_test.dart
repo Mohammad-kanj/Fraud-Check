@@ -255,13 +255,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     }
 
-    testWidgets('CAT.1: Header micro-badges render active mode and total category count',
+    testWidgets('CAT.1: Header renders active mode and Pick a category',
         (WidgetTester tester) async {
       await navigateToCategory(tester);
 
-      expect(find.text('Mode: Classic'), findsOneWidget);
-      expect(find.text('${categories.length} Categories'), findsOneWidget);
       expect(find.text('Pick a category'), findsOneWidget);
+      expect(find.text('Change mode (Classic)'), findsOneWidget);
     });
 
     testWidgets('CAT.2: All category cards render squircle emoji avatar (44x44, r:12) and word count micro-pills',
@@ -441,7 +440,7 @@ void main() {
       expect(headline.style?.color, yellow);
     });
 
-    testWidgets('END.2: Defeat Hero Banner renders single sentence "THE FRAUD WINS"',
+    testWidgets('END.2: Defeat Hero Banner renders single sentence "THE FRAUD ESCAPED"',
         (WidgetTester tester) async {
       // Scenario A: Fraud escaped without being caught
       await setupEndScreen(
@@ -450,9 +449,9 @@ void main() {
         fraudGuessedCorrectly: false,
       );
 
-      expect(find.text('THE FRAUD WINS'), findsOneWidget);
+      expect(find.text('THE FRAUD ESCAPED'), findsOneWidget);
 
-      final headlineA = tester.widget<Text>(find.text('THE FRAUD WINS'));
+      final headlineA = tester.widget<Text>(find.text('THE FRAUD ESCAPED'));
       expect(headlineA.style?.color, yellow);
 
       // Scenario B: Fraud caught by majority and guessed secret word correctly (fraud loses round, receives 50 pts, voters receive 100 pts)
@@ -589,9 +588,9 @@ void main() {
         fraudGuessedCorrectly: false,
       );
 
-      // Verify button labels & icons
+      // Verify button labels & no arrow icon next to Continue
       expect(find.text('Continue'), findsOneWidget);
-      expect(find.byIcon(Icons.arrow_forward_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_forward_rounded), findsNothing);
       expect(find.text('Return to main menu'), findsOneWidget);
 
       // Test Continue navigates to Screen.category preserving cumulative scores
