@@ -264,3 +264,26 @@ const Map<String, String> categoryIcons = {
   "Instruments": "🎸",
   "Desserts": "🍰",
 };
+
+const Map<String, String> categoryImages = {
+  "Movies": "assets/categories/movies.png",
+  "TV Shows": "assets/categories/tv_shows.png",
+  "Animals": "assets/categories/animals.png",
+  "Leaders": "assets/categories/leaders.png",
+  "Sports": "assets/categories/sports.png",
+  "Clothing": "assets/categories/clothing.png",
+  "Food": "assets/categories/food.png",
+  "Drinks": "assets/categories/drinks.png",
+  "Places": "assets/categories/places.png",
+  "Professions": "assets/categories/professions.png",
+  "Video Games": "assets/categories/video_games.png",
+  "Superheroes": "assets/categories/superheroes.png",
+  "Musical Artists": "assets/categories/musical_artists.png",
+  "Brands": "assets/categories/brands.png",
+  "Household Items": "assets/categories/household_items.png",
+  "Vehicles": "assets/categories/vehicles.png",
+  "Cartoons & Anime": "assets/categories/cartoons_and_anime.png",
+  "Landmarks": "assets/categories/landmarks.png",
+  "Instruments": "assets/categories/instruments.png",
+  "Desserts": "assets/categories/desserts.png",
+};

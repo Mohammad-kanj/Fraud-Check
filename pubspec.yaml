@@ -29,6 +29,7 @@ flutter:
     - assets/sounds/guess.wav
     - assets/sounds/win.wav
     - assets/sounds/lose.wav
+    - assets/categories/
 
 flutter_launcher_icons:
   android: true

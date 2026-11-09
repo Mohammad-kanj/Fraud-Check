@@ -263,7 +263,7 @@ void main() {
       expect(find.text('Change mode (Classic)'), findsOneWidget);
     });
 
-    testWidgets('CAT.2: All category cards render squircle emoji avatar (44x44, r:12) with word counts removed',
+    testWidgets('CAT.2: All category cards render custom pixel-art box image asset',
         (WidgetTester tester) async {
       await navigateToCategory(tester);
 
@@ -274,7 +274,6 @@ void main() {
       expect(delegate.crossAxisCount, 2, reason: 'Category grid must be 2 columns');
       expect(delegate.childAspectRatio, 1.25, reason: 'Category grid cards must use 1.25 aspect ratio');
 
-      // Verify every category has squircle emoji container and no word count micro-pill
       for (final cat in categories.keys) {
         final catTextFinder = find.text(cat);
         expect(catTextFinder, findsOneWidget, reason: 'Category name "$cat" must be displayed');
@@ -287,11 +286,18 @@ void main() {
           reason: 'Word count is removed from category card for $cat',
         );
 
-        final expectedEmoji = categoryIcons[cat] ?? '🎭';
+        final expectedAsset = categoryImages[cat];
+        expect(expectedAsset, isNotNull);
         expect(
-          find.descendant(of: cardFinder, matching: find.text(expectedEmoji)),
+          find.descendant(
+            of: cardFinder,
+            matching: find.byWidgetPredicate((w) =>
+                w is Image &&
+                w.image is AssetImage &&
+                (w.image as AssetImage).assetName == expectedAsset),
+          ),
           findsOneWidget,
-          reason: 'Squircle avatar emoji "$expectedEmoji" must be present for $cat',
+          reason: 'Custom pixel-art box image "$expectedAsset" must be present for $cat',
         );
       }
     });

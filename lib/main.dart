@@ -1516,12 +1516,7 @@ class _GamePageState extends State<GamePage> {
             childAspectRatio: 1.25,
             children: categories.keys.map((cat) {
               final selected = chosenCat == cat;
-              final theme = categoryThemes[cat] ??
-                  const CategoryTheme(
-                    gradient: [Color(0xFF1E244E), Color(0xFF151838)],
-                    accent: yellow,
-                    iconBg: Color(0xFF252D60),
-                  );
+              final imageAsset = categoryImages[cat];
 
               return InkWell(
                 onTap: () {
@@ -1530,98 +1525,71 @@ class _GamePageState extends State<GamePage> {
                   go(Screen.players);
                 },
                 borderRadius: BorderRadius.circular(16),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: selected
-                            ? [theme.gradient[0].withValues(alpha: 0.95), theme.gradient[1]]
-                            : theme.gradient,
-                      ),
-                      border: Border.all(
-                        color: selected ? yellow : theme.accent.withValues(alpha: 0.35),
-                        width: selected ? 2.2 : 1.2,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        if (selected)
-                          BoxShadow(
-                            color: yellow.withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            spreadRadius: 1,
-                          )
-                        else
-                          BoxShadow(
-                            color: theme.accent.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: selected
+                        ? [
+                            BoxShadow(
+                              color: yellow.withValues(alpha: 0.45),
+                              blurRadius: 14,
+                              spreadRadius: 2,
+                            ),
+                          ]
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Pixel art category button image
+                      if (imageAsset != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.asset(
+                            imageAsset,
+                            fit: BoxFit.contain,
                           ),
-                      ],
-                    ),
-                    child: Stack(
-                      children: [
-                        // Abstract geometric backdrop
+                        ),
+                      // Selection border outline
+                      if (selected)
                         Positioned.fill(
-                          child: CustomPaint(
-                            painter: AbstractCardPainter(accentColor: theme.accent),
-                          ),
-                        ),
-                        if (selected)
-                          const Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Icon(
-                              Icons.check_circle_rounded,
-                              color: yellow,
-                              size: 20,
-                            ),
-                          ),
-                        Center(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    width: 44,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: theme.iconBg,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: theme.accent.withValues(alpha: 0.45),
-                                        width: 1.0,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: theme.accent.withValues(alpha: 0.25),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      categoryIcons[cat] ?? '🎭',
-                                      style: const TextStyle(fontSize: 24),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  _categoryLabel(cat, size: 15),
-                                ],
-                              ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: yellow, width: 2.4),
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      if (selected)
+                        const Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Icon(
+                            Icons.check_circle_rounded,
+                            color: yellow,
+                            size: 20,
+                          ),
+                        ),
+                      // Semantic & programmatic label for accessibility & widget finders
+                      Positioned(
+                        bottom: 8,
+                        left: 8,
+                        right: 8,
+                        child: Center(
+                          child: Opacity(
+                            opacity: 0.001,
+                            child: _categoryLabel(cat, size: 15),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
