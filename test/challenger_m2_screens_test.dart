@@ -35,11 +35,11 @@ void main() {
       final bg = elevatedBtn.style?.backgroundColor?.resolve({});
       expect(bg, const Color(0xFFFFC837), reason: 'Play button must use signature yellow party color');
 
-      // 2. Verify Icons.play_arrow_rounded inside Play button
+      // 2. Verify no icon/emoji inside Play button
       expect(
-        find.descendant(of: playBtnFinder, matching: find.byIcon(Icons.play_arrow_rounded)),
-        findsOneWidget,
-        reason: 'Play button must contain Icons.play_arrow_rounded',
+        find.descendant(of: playBtnFinder, matching: find.byType(Icon)),
+        findsNothing,
+        reason: 'Play button must not contain an icon or emoji',
       );
 
       // 3. Tap Play and verify transition to mode selection
@@ -263,7 +263,7 @@ void main() {
       expect(find.text('Change mode (Classic)'), findsOneWidget);
     });
 
-    testWidgets('CAT.2: All category cards render squircle emoji avatar (44x44, r:12) and word count micro-pills',
+    testWidgets('CAT.2: All category cards render squircle emoji avatar (44x44, r:12) with word counts removed',
         (WidgetTester tester) async {
       await navigateToCategory(tester);
 
@@ -274,18 +274,17 @@ void main() {
       expect(delegate.crossAxisCount, 2, reason: 'Category grid must be 2 columns');
       expect(delegate.childAspectRatio, 1.25, reason: 'Category grid cards must use 1.25 aspect ratio');
 
-      // Verify every category has squircle emoji container and micro-pill scoped to its card
+      // Verify every category has squircle emoji container and no word count micro-pill
       for (final cat in categories.keys) {
         final catTextFinder = find.text(cat);
         expect(catTextFinder, findsOneWidget, reason: 'Category name "$cat" must be displayed');
 
         final cardFinder = find.ancestor(of: catTextFinder, matching: find.byType(InkWell)).first;
 
-        final expectedWordCount = categories[cat]!.length;
         expect(
-          find.descendant(of: cardFinder, matching: find.text('🏷️ $expectedWordCount words')),
-          findsOneWidget,
-          reason: 'Word count micro-pill "🏷️ $expectedWordCount words" must exist for $cat',
+          find.descendant(of: cardFinder, matching: find.textContaining('words')),
+          findsNothing,
+          reason: 'Word count is removed from category card for $cat',
         );
 
         final expectedEmoji = categoryIcons[cat] ?? '🎭';

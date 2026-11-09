@@ -1198,7 +1198,7 @@ class _GamePageState extends State<GamePage> {
             ),
           ),
           const SizedBox(height: 32),
-          _primaryWithIcon('Play', Icons.play_arrow_rounded, () {
+          _primary('Play', () {
             Sound.tap();
             go(Screen.mode);
           }),
@@ -1318,17 +1318,8 @@ class _GamePageState extends State<GamePage> {
         children: [
           _title('Pick a category'),
           const SizedBox(height: 6),
-          OutlinedButton.icon(
+          OutlinedButton(
             onPressed: () => go(Screen.mode),
-            icon: const Icon(Icons.swap_horiz_rounded, size: 15, color: yellow),
-            label: Text(
-              'Change mode (${selectedMode.title})',
-              style: const TextStyle(
-                color: yellow,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               minimumSize: Size.zero,
@@ -1336,6 +1327,14 @@ class _GamePageState extends State<GamePage> {
               side: const BorderSide(color: border),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               backgroundColor: card2,
+            ),
+            child: Text(
+              'Change mode (${selectedMode.title})',
+              style: const TextStyle(
+                color: yellow,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -1413,25 +1412,8 @@ class _GamePageState extends State<GamePage> {
                                   style: const TextStyle(fontSize: 26),
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 8),
                               _categoryLabel(cat, size: 15),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: card2.withValues(alpha: 0.8),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '🏷️ ${categories[cat]!.length} words',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: muted,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
                             ],
                           ),
                         ),
