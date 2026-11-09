@@ -50,7 +50,7 @@ void main() {
       expect(state.scores['Bob'], equals(0));
       expect(state.scores['Charlie'], equals(0));
 
-      expect(find.text('THE FRAUD ESCAPED!'), findsOneWidget);
+      expect(find.text('The Fraud Wins'), findsOneWidget);
       expect(find.text('voted David'), findsNWidgets(2));
       expect(find.text('voted Alice'), findsNWidgets(2));
       expect(tester.takeException(), isNull);
@@ -84,7 +84,7 @@ void main() {
       expect(state.screen, Screen.result);
       expect(state.fraudCaughtByMajority, isFalse);
       expect(state.scores['Charlie'], equals(100));
-      expect(find.text('THE FRAUD ESCAPED!'), findsOneWidget);
+      expect(find.text('The Fraud Wins'), findsOneWidget);
       expect(find.textContaining('voted'), findsNothing);
       expect(tester.takeException(), isNull);
     });

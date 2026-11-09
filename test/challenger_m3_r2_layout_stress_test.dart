@@ -98,8 +98,7 @@ void main() {
             reason: 'Must render results screen without RenderFlex overflow on ${entry.key}');
 
         // 2. Assert Hero Victory Banner
-        expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
-        expect(find.text('The players in the know win!'), findsOneWidget);
+        expect(find.text('The players win'), findsOneWidget);
 
         // 3. Assert Dimensional Summary Section
         expect(find.text('SECRET WORD'), findsOneWidget);
@@ -144,8 +143,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(tester.takeException(), isNull);
-      expect(find.text('THE FRAUD ESCAPED!'), findsOneWidget);
-      expect(find.text('The fraud wins!'), findsOneWidget);
+      expect(find.text('The Fraud Wins'), findsOneWidget);
     });
 
     testWidgets('VP.3: Undercover role pill rendering and scaling across viewports', (WidgetTester tester) async {
@@ -571,8 +569,7 @@ void main() {
           reason: 'Result screen arrived at via full game flow must have zero overflow at 320px');
 
       // Verify group victory banner even though fraud guessed correctly per R6
-      expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
-      expect(find.text('The players in the know win!'), findsOneWidget);
+      expect(find.text('The players win'), findsOneWidget);
 
       // Verify voter display on leaderboard
       expect(find.text('voted ${state.players[targetFraud]}'), findsWidgets);

@@ -35,6 +35,7 @@ enum GameModeId {
   classic,
   twoFrauds,
   undercover,
+  soloUndercover,
 }
 
 class GameMode {
@@ -80,6 +81,14 @@ const List<GameMode> availableGameModes = [
     subtitle: '1 fraud + 1 undercover agent with a secret decoy word!',
     minPlayers: 4,
     fraudCount: 1,
+    hasUndercover: true,
+  ),
+  GameMode(
+    id: GameModeId.soloUndercover,
+    title: 'Solo Undercover',
+    subtitle: 'Just 1 undercover agent with a secret decoy word. No frauds!',
+    minPlayers: 3,
+    fraudCount: 0,
     hasUndercover: true,
   ),
 ];
@@ -176,7 +185,7 @@ class _FilmStripBackgroundState extends State<FilmStripBackground>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 40),
+      duration: const Duration(seconds: 10),
     )..repeat();
   }
 
@@ -520,7 +529,7 @@ class _GamePageState extends State<GamePage> {
       voteCounts = {};
       fraudCaughtByMajority = false;
       caughtFrauds = {};
-      guessingFraudIndex = frauds.first;
+      guessingFraudIndex = frauds.isNotEmpty ? frauds.first : (undercover ?? 0);
       guessOptions = [];
       guessPick = null;
       pointsEarnedThisRound = {};
@@ -634,6 +643,12 @@ class _GamePageState extends State<GamePage> {
       }
     }
 
+    if (fraudIndices.isEmpty && undercoverIndex != null) {
+      if ((voteCounts[undercoverIndex!] ?? 0) > majorityThreshold) {
+        caughtFrauds.add(undercoverIndex!);
+      }
+    }
+
     if (caughtFrauds.isNotEmpty) {
       fraudCaughtByMajority = true;
       // Caught fraud with highest votes guesses
@@ -684,7 +699,9 @@ class _GamePageState extends State<GamePage> {
 
       // All players who voted for that caught fraud receive 100 points
       for (int voter = 0; voter < players.length; voter++) {
-        if (!fraudIndices.contains(voter)) {
+        final isVotingTarget = fraudIndices.contains(voter) ||
+            (fraudIndices.isEmpty && voter == undercoverIndex);
+        if (!isVotingTarget) {
           final target = playerVotes[voter];
           if (target != null &&
               (target == guessingFraudIndex || caughtFrauds.contains(target))) {
@@ -704,11 +721,14 @@ class _GamePageState extends State<GamePage> {
 
   String get resultTitle {
     if (!fraudCaughtByMajority) {
+      if (selectedMode.fraudCount == 0 && selectedMode.hasUndercover) {
+        return 'The Undercover Wins';
+      }
       return selectedMode.fraudCount > 1
-          ? 'The frauds win!'
-          : 'The fraud wins!';
+          ? 'The Frauds Win'
+          : 'The Fraud Wins';
     }
-    return 'The players in the know win!';
+    return 'The players win';
   }
 
   String get resultLine {
@@ -1187,7 +1207,7 @@ class _GamePageState extends State<GamePage> {
                               m.fraudCount > 1
                                   ? '2 Frauds'
                                   : m.hasUndercover
-                                      ? '1 Fraud + 1 Undercover'
+                                      ? (m.fraudCount == 0 ? '1 Undercover' : '1 Fraud + 1 Undercover')
                                       : '1 Fraud',
                               style: const TextStyle(
                                   fontSize: 11,
@@ -1762,7 +1782,8 @@ class _GamePageState extends State<GamePage> {
               Text(
                 '• Classic (1 Fraud): Exactly one player is the fraud and only knows the category. Everyone else sees the secret word.\n\n'
                 '• Two Frauds: Two players are chosen as frauds! Neither knows the secret word. Double the suspicion!\n\n'
-                '• Undercover: One fraud + one undercover player. The undercover receives a related decoy word. Both try to blend in!',
+                '• Undercover: One fraud + one undercover player. The undercover receives a related decoy word. Both try to blend in!\n\n'
+                '• Solo Undercover: Just 1 undercover player with a decoy word and no frauds. Spot the player with the different word!',
                 style: TextStyle(color: muted, height: 1.5),
               ),
             ],
@@ -2637,9 +2658,6 @@ class _GamePageState extends State<GamePage> {
     final sorted = scores.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     final isPlayersWin = fraudCaughtByMajority;
-    final heroBannerText = isPlayersWin
-        ? 'PLAYERS IN THE KNOW WIN!'
-        : 'THE FRAUD ESCAPED!';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -2647,7 +2665,7 @@ class _GamePageState extends State<GamePage> {
         // a. Victory/Defeat Hero Banner (No emojis)
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
           decoration: BoxDecoration(
             color: card2,
             borderRadius: BorderRadius.circular(20),
@@ -2656,31 +2674,14 @@ class _GamePageState extends State<GamePage> {
               width: 2,
             ),
           ),
-          child: Column(
-            children: [
-              Text(
-                heroBannerText,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: isPlayersWin ? const Color(0xFF10B981) : const Color(0xFFFF3B5C),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                resultTitle,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: ink,
-                ),
-              ),
-              const SizedBox(height: 4),
-              _mutedText(resultLine),
-            ],
+          child: Text(
+            resultTitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              color: ink,
+            ),
           ),
         ),
         const SizedBox(height: 14),
@@ -2708,49 +2709,6 @@ class _GamePageState extends State<GamePage> {
           ),
           child: Column(
             children: [
-              // Category & Mode Pills
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: card2,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: border),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(categoryIcons[roundCat] ?? '📁', style: const TextStyle(fontSize: 14)),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            roundCat,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: yellow, fontSize: 13, fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: card2,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: border),
-                    ),
-                    child: Text(
-                      'Mode: ${selectedMode.title}',
-                      style: const TextStyle(color: ink, fontSize: 12, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
               // Secret Word Hero Display
               const Text('SECRET WORD',
                   style: TextStyle(color: muted, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
@@ -2763,23 +2721,25 @@ class _GamePageState extends State<GamePage> {
                   style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: ink, letterSpacing: 0.5),
                 ),
               ),
-              const SizedBox(height: 14),
-              // Fraud Pill
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: card2,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: yellow.withValues(alpha: 0.4)),
+              if (fraudIndices.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                // Fraud Pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: card2,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: yellow.withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    selectedMode.fraudCount > 1
+                        ? 'Frauds: ${fraudIndices.map((i) => players[i]).join(', ')}'
+                        : 'Fraud: ${fraudIndices.map((i) => players[i]).join(', ')}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.w800, color: ink, fontSize: 14),
+                  ),
                 ),
-                child: Text(
-                  selectedMode.fraudCount > 1
-                      ? 'Frauds: ${fraudIndices.map((i) => players[i]).join(', ')}'
-                      : 'Fraud: ${fraudIndices.map((i) => players[i]).join(', ')}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w800, color: ink, fontSize: 14),
-                ),
-              ),
+              ],
               if (undercoverIndex != null) ...[
                 const SizedBox(height: 8),
                 Container(

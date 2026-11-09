@@ -341,7 +341,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Now on Result Screen (F10 / R2)
-      expect(find.text('The players in the know win!'), findsOneWidget);
+      expect(find.text('The players win'), findsOneWidget);
       expect(find.text('SECRET WORD'), findsOneWidget);
       expect(find.text(roundWord), findsOneWidget);
       expect(find.text('Total Leaderboard'), findsOneWidget);
@@ -523,7 +523,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Verify points: safe voters get +100 points
-      expect(find.text('The players in the know win!'), findsOneWidget);
+      expect(find.text('The players win'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       expect(pointsEarned[fraudIdx] ?? 0, equals(0));
       for (int i = 0; i < 4; i++) {
@@ -570,7 +570,7 @@ void main() {
       }
 
       // No majority: Frauds escape!
-      expect(find.text('The frauds win!'), findsOneWidget);
+      expect(find.text('The Frauds Win'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       for (final f in fraudIndices) {
         expect(pointsEarned[f], equals(100),

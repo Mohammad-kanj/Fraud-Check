@@ -583,7 +583,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
 
       // Now on Result screen
-      expect(find.text('The players in the know win!'), findsOneWidget);
+      expect(find.text('The players win'), findsOneWidget);
       expect(find.text('Continue'), findsOneWidget);
 
       // Continue to next round (category selection)

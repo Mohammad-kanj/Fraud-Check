@@ -71,7 +71,7 @@ void main() {
 
         expect(tester.takeException(), isNull,
             reason: 'Results screen must render cleanly with 0 overflow on ${entry.key}');
-        expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
+        expect(find.text('The players win'), findsOneWidget);
         expect(find.text('Hippopotomonstrosesquippedaliophobia'), findsOneWidget);
         expect(find.text('Total Leaderboard'), findsOneWidget);
       });

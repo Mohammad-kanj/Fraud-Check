@@ -479,7 +479,7 @@ void main() {
       });
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('The players in the know win!'), findsOneWidget);
+      expect(find.text('The players win'), findsOneWidget);
       expect(find.text('Continue'), findsOneWidget);
       expect(find.text('+100'), findsNWidgets(3));
       expect(tester.takeException(), isNull);

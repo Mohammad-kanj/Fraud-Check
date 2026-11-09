@@ -417,7 +417,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 50));
 
         // Result screen
-        expect(find.text('The players in the know win!'), findsOneWidget);
+        expect(find.text('The players win'), findsOneWidget);
 
         if (round < 3) {
           // Tap "Continue"

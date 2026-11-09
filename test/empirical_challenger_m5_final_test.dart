@@ -261,8 +261,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Result screen assertions
-      expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
-      expect(find.text('The players in the know win!'), findsOneWidget);
+      expect(find.text('The players win'), findsOneWidget);
 
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       expect(pointsEarned[fraudIdx], equals(50));
@@ -330,8 +329,7 @@ void main() {
       await tester.tap(find.text('Confirm guess'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
-      expect(find.text('The players in the know win!'), findsOneWidget);
+      expect(find.text('The players win'), findsOneWidget);
 
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       expect(pointsEarned[fraudIdx], equals(0));
@@ -427,7 +425,7 @@ void main() {
       }
 
       // Fraud escaped!
-      expect(find.text('THE FRAUD ESCAPED!'), findsOneWidget);
+      expect(find.text('The Fraud Wins'), findsOneWidget);
       final Map<String, int> scoresAfterR2 = (state.scores as Map<String, int>);
       expect(scoresAfterR2[players[fraud2]], equals((scoresAfterR1[players[fraud2]] ?? 0) + 100));
     });

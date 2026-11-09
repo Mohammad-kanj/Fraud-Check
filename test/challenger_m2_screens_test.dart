@@ -429,20 +429,19 @@ void main() {
         fraudGuessedCorrectly: false,
       );
 
-      // Verify victory banner headline (no emoji)
-      expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
-      expect(find.text('The players in the know win!'), findsOneWidget);
+      // Verify victory banner headline (no emoji, single sentence, no text under)
+      expect(find.text('The players win'), findsOneWidget);
       expect(
         find.text('The fraud was caught by majority vote and failed to guess the secret word.'),
-        findsOneWidget,
+        findsNothing,
       );
 
-      // Verify headline text color is green
-      final headline = tester.widget<Text>(find.text('PLAYERS IN THE KNOW WIN!'));
-      expect(headline.style?.color, const Color(0xFF10B981));
+      // Verify headline text color
+      final headline = tester.widget<Text>(find.text('The players win'));
+      expect(headline.style?.color, ink);
     });
 
-    testWidgets('END.2: Defeat Hero Banner renders red styling, and fraud escaped headline',
+    testWidgets('END.2: Defeat Hero Banner renders single sentence "The Fraud Wins"',
         (WidgetTester tester) async {
       // Scenario A: Fraud escaped without being caught
       await setupEndScreen(
@@ -451,11 +450,10 @@ void main() {
         fraudGuessedCorrectly: false,
       );
 
-      expect(find.text('THE FRAUD ESCAPED!'), findsOneWidget);
-      expect(find.text('The fraud wins!'), findsOneWidget);
+      expect(find.text('The Fraud Wins'), findsOneWidget);
 
-      final headlineA = tester.widget<Text>(find.text('THE FRAUD ESCAPED!'));
-      expect(headlineA.style?.color, const Color(0xFFFF3B5C));
+      final headlineA = tester.widget<Text>(find.text('The Fraud Wins'));
+      expect(headlineA.style?.color, ink);
 
       // Scenario B: Fraud caught by majority and guessed secret word correctly (fraud loses round, receives 50 pts, voters receive 100 pts)
       await setupEndScreen(
@@ -464,11 +462,10 @@ void main() {
         fraudGuessedCorrectly: true,
       );
 
-      expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
-      expect(find.text('The players in the know win!'), findsOneWidget);
+      expect(find.text('The players win'), findsOneWidget);
     });
 
-    testWidgets('END.3: Secret Word Reveal Card displays category squircle, mode badge, secret word, and fraud badge',
+    testWidgets('END.3: Secret Word Reveal Card displays secret word and fraud badge (category & mode removed)',
         (WidgetTester tester) async {
       await setupEndScreen(
         tester,
@@ -478,9 +475,8 @@ void main() {
         roundCat: 'Food',
       );
 
-      // Category squircle icon & category name
-      expect(find.text('Food'), findsOneWidget);
-      expect(find.text('Mode: Classic'), findsOneWidget);
+      // Category & mode removed from final screen
+      expect(find.text('Mode: Classic'), findsNothing);
 
       // Secret Word bold text in dimensional box
       expect(find.text('SECRET WORD'), findsOneWidget);
@@ -638,17 +634,10 @@ void main() {
         },
       );
 
-      // Verify Wrap is used for category and mode pills
-      final wrapFinder = find.byType(Wrap);
-      expect(wrapFinder, findsWidgets);
-
-      final wrapWidget = tester.widget<Wrap>(find.descendant(
-        of: find.byType(Column),
-        matching: find.byWidgetPredicate((w) => w is Wrap && w.alignment == WrapAlignment.center && w.spacing == 8 && w.runSpacing == 6),
-      ).first);
-      expect(wrapWidget.alignment, equals(WrapAlignment.center));
-      expect(wrapWidget.spacing, equals(8));
-      expect(wrapWidget.runSpacing, equals(6));
+      // Verify category and mode are removed from final screen
+      expect(find.text('Mode: Classic'), findsNothing);
+      expect(find.text('Mode: Two Frauds'), findsNothing);
+      expect(find.text('Category: Food'), findsNothing);
 
       // Verify player name has TextOverflow.ellipsis and is wrapped in Expanded
       final longNameFinder = find.text(longName);

@@ -231,7 +231,7 @@ void main() {
 
       // RESULTS SCREEN - ROUND 1
       expect(state.screen.toString(), contains('result'));
-      expect(find.text('The players in the know win!'), findsOneWidget);
+      expect(find.text('The players win'), findsOneWidget);
       expect(find.text('Total Leaderboard'), findsOneWidget);
 
       // Verify Round 1 Scoring:
@@ -309,7 +309,7 @@ void main() {
 
       // RESULTS SCREEN - ROUND 2
       expect(state.screen.toString(), contains('result'));
-      expect(find.text('The fraud wins!'), findsOneWidget);
+      expect(find.text('The Fraud Wins'), findsOneWidget);
 
       // Round 2 Outcome:
       // The fraud escaped! The fraud earned 100 points this round.

@@ -72,15 +72,7 @@ void main() {
       expect(state.pointsEarnedThisRound[2], isNull);
 
       // 3. Verify Victory Banner text & color (Group victory, not fraud victory)
-      expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
-      final bannerText = tester.widget<Text>(find.text('PLAYERS IN THE KNOW WIN!'));
-      expect(bannerText.style?.color, const Color(0xFF10B981));
-
-      expect(find.text('The players in the know win!'), findsOneWidget);
-      expect(
-        find.text('David guessed the secret word ("Pizza") for 50 bonus pts, but was caught and lost the round!'),
-        findsOneWidget,
-      );
+      expect(find.text('The players win'), findsOneWidget);
 
       // 4. Verify Leaderboard deltas and vote indicators
       expect(find.text('+50'), findsOneWidget); // David
@@ -142,15 +134,7 @@ void main() {
       expect(state.pointsEarnedThisRound[2], equals(100));
 
       // 3. Verify Victory Banner text & color
-      expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
-      final bannerText = tester.widget<Text>(find.text('PLAYERS IN THE KNOW WIN!'));
-      expect(bannerText.style?.color, const Color(0xFF10B981));
-
-      expect(find.text('The players in the know win!'), findsOneWidget);
-      expect(
-        find.text('The fraud was caught by majority vote and failed to guess the secret word.'),
-        findsOneWidget,
-      );
+      expect(find.text('The players win'), findsOneWidget);
 
       // 4. Verify Leaderboard deltas and vote indicators
       expect(find.text('+50'), findsNothing); // No 50 pts
@@ -196,16 +180,8 @@ void main() {
       expect(state.scores['Bob'], equals(50));
       expect(state.scores['Charlie'], equals(20));
 
-      // 3. Verify Defeat Banner text & red styling
-      expect(find.text('THE FRAUD ESCAPED!'), findsOneWidget);
-      final bannerText = tester.widget<Text>(find.text('THE FRAUD ESCAPED!'));
-      expect(bannerText.style?.color, const Color(0xFFFF3B5C));
-
-      expect(find.text('The fraud wins!'), findsOneWidget);
-      expect(
-        find.text('No fraud received more than half of the votes, so the fraud takes the round.'),
-        findsOneWidget,
-      );
+      // 3. Verify Defeat Banner text
+      expect(find.text('The Fraud Wins'), findsOneWidget);
 
       // 4. Verify Leaderboard shows +100 for fraud, nothing for safe players
       expect(find.text('+100'), findsOneWidget); // Only David
@@ -354,7 +330,7 @@ void main() {
       expect(state.pointsEarnedThisRound[4], equals(100));
 
       // Group victory banner
-      expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
+      expect(find.text('The players win'), findsOneWidget);
       expect(find.text('voted Charlie'), findsNWidgets(3)); // Alice, Bob, Eve
       expect(find.text('voted David'), findsOneWidget); // Charlie
       expect(find.text('voted Alice'), findsOneWidget); // David

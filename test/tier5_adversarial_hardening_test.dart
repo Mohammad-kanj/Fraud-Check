@@ -674,7 +674,7 @@ void main() {
       }
 
       // Fraud was NOT caught -> directly to Result screen (no Guess screen)
-      expect(find.text('The fraud wins!'), findsOneWidget);
+      expect(find.text('The Fraud Wins'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       expect(pointsEarned[fraudIdx], equals(100),
           reason: 'Escaping fraud with <= 50% votes must earn 100 points');
@@ -716,9 +716,8 @@ void main() {
       await tester.tap(find.text('Confirm guess'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Under R6: Fraud loses round even on correct guess, players in the know win!
-      expect(find.text('PLAYERS IN THE KNOW WIN!'), findsOneWidget);
-      expect(find.text('The players in the know win!'), findsOneWidget);
+      // Under R6: Fraud loses round even on correct guess, players win!
+      expect(find.text('The players win'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       expect(pointsEarned[fraudIdx], equals(50),
           reason: 'Fraud guessing secret word correctly receives 50 points');
@@ -769,7 +768,7 @@ void main() {
       await tester.tap(find.text('Confirm guess'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('The players in the know win!'), findsOneWidget);
+      expect(find.text('The players win'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       for (final safeVoter in safePlayers) {
         expect(pointsEarned[safeVoter], equals(100),
