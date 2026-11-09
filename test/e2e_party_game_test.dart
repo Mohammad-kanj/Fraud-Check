@@ -341,7 +341,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Now on Result Screen (F10 / R2)
-      expect(find.text('The players win'), findsOneWidget);
+      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
       expect(find.text('SECRET WORD'), findsOneWidget);
       expect(find.text(roundWord), findsOneWidget);
       expect(find.text('Total Leaderboard'), findsOneWidget);
@@ -523,7 +523,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Verify points: safe voters get +100 points
-      expect(find.text('The players win'), findsOneWidget);
+      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       expect(pointsEarned[fraudIdx] ?? 0, equals(0));
       for (int i = 0; i < 4; i++) {
@@ -555,14 +555,15 @@ void main() {
 
       final List<String> players = (state.players as List<String>);
 
-      // Cast split votes so no player gets majority (> 2.5 votes)
-      // Voters 0->1, 1->2, 2->3, 3->4, 4->0
+      // Cast split votes so no player gets majority (> 2.5 votes), picking 2 targets in Two Frauds mode
       for (int v = 0; v < 5; v++) {
         await tester.tap(find.text('Tap to vote'));
         await tester.pump(const Duration(milliseconds: 100));
 
-        final target = (v + 1) % 5;
-        await tester.tap(find.text(players[target]));
+        final target1 = (v + 1) % 5;
+        final target2 = (v + 2) % 5;
+        await tester.tap(find.text(players[target1]));
+        await tester.tap(find.text(players[target2]));
         await tester.pump(const Duration(milliseconds: 100));
 
         await tester.tap(find.text('Vote'));
@@ -570,7 +571,7 @@ void main() {
       }
 
       // No majority: Frauds escape!
-      expect(find.text('The Frauds Win'), findsOneWidget);
+      expect(find.text('THE FRAUDS WIN'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       for (final f in fraudIndices) {
         expect(pointsEarned[f], equals(100),
@@ -580,7 +581,7 @@ void main() {
 
     testWidgets('T3.3: Undercover Mode combination: 4 players, Drinks category, undercover agent survives',
         (WidgetTester tester) async {
-      await startRound(tester, modeTitle: 'Undercover', category: 'Drinks');
+      await startRound(tester, modeTitle: 'Chaos', category: 'Drinks');
 
       final dynamic state = tester.state(find.byType(GamePage));
       final Set<int> fraudIndices = (state.fraudIndices as Set<int>);
@@ -593,19 +594,15 @@ void main() {
 
       final List<String> players = (state.players as List<String>);
 
-      // Voters cast split votes where neither fraud nor undercover gets majority
-      // E.g. Voters vote for players other than undercover
+      // Voters cast split votes so every player gets exactly 2 votes (<= 2 threshold, no majority)
       for (int v = 0; v < 4; v++) {
         await tester.tap(find.text('Tap to vote'));
         await tester.pump(const Duration(milliseconds: 100));
 
-        // Vote target different from v and different from undercover
-        int target = (v + 1) % 4;
-        if (target == undercoverIdx) {
-          target = (target + 1) % 4;
-        }
-
-        await tester.tap(find.text(players[target]));
+        final target1 = (v + 1) % 4;
+        final target2 = (v + 2) % 4;
+        await tester.tap(find.text(players[target1]));
+        await tester.tap(find.text(players[target2]));
         await tester.pump(const Duration(milliseconds: 100));
 
         await tester.tap(find.text('Vote'));

@@ -131,7 +131,7 @@ void main() {
 
     testWidgets('ADV-B2: Undercover mode minimum boundary strictly prevents deletion below 4',
         (WidgetTester tester) async {
-      await navigateToPlayers(tester, modeTitle: 'Undercover', category: 'Drinks');
+      await navigateToPlayers(tester, modeTitle: 'Chaos', category: 'Drinks');
       expect(find.byType(TextField), findsNWidgets(4));
 
       // At boundary 4, all 4 remove buttons must have null onPressed
@@ -587,7 +587,7 @@ void main() {
     testWidgets('ADV-M3: Undercover mode invariant: exactly 1 fraud, 1 undercover, distinct decoy word',
         (WidgetTester tester) async {
       for (final count in [4, 6, 10]) {
-        await setupAndStartRound(tester, modeTitle: 'Undercover', category: 'Professions', targetPlayers: count);
+        await setupAndStartRound(tester, modeTitle: 'Chaos', category: 'Professions', targetPlayers: count);
         final dynamic state = tester.state(find.byType(GamePage));
         final Set<int> fraudIndices = (state.fraudIndices as Set<int>);
         final int? undercoverIndex = (state.undercoverIndex as int?);
@@ -674,7 +674,7 @@ void main() {
       }
 
       // Fraud was NOT caught -> directly to Result screen (no Guess screen)
-      expect(find.text('The Fraud Wins'), findsOneWidget);
+      expect(find.text('THE FRAUD WINS'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       expect(pointsEarned[fraudIdx], equals(100),
           reason: 'Escaping fraud with <= 50% votes must earn 100 points');
@@ -717,7 +717,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Under R6: Fraud loses round even on correct guess, players win!
-      expect(find.text('The players win'), findsOneWidget);
+      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       expect(pointsEarned[fraudIdx], equals(50),
           reason: 'Fraud guessing secret word correctly receives 50 points');
@@ -743,17 +743,21 @@ void main() {
       final int otherF = frauds[1];
       final safePlayers = [0, 1, 2, 3, 4].where((i) => !frauds.contains(i)).toList();
 
-      // 3 safe voters vote for caughtF (> 2.5 majority threshold)
+      // 3 safe voters vote for caughtF (> 2.5 majority threshold), selecting 2 suspects in Two Frauds mode
       for (int v = 0; v < 5; v++) {
         await tester.tap(find.text('Tap to vote'));
         await tester.pump(const Duration(milliseconds: 100));
         if (v == caughtF) {
           await tester.tap(find.text(players[otherF]));
+          await tester.tap(find.text(players[safePlayers[0]]));
         } else if (v == otherF) {
           await tester.tap(find.text(players[safePlayers[0]]));
+          await tester.tap(find.text(players[safePlayers[1]]));
         } else {
-          // Safe players vote for caughtF
+          // Safe players vote for caughtF and another safe player
           await tester.tap(find.text(players[caughtF]));
+          final secondTarget = (v == safePlayers[0]) ? safePlayers[1] : safePlayers[0];
+          await tester.tap(find.text(players[secondTarget]));
         }
         await tester.pump(const Duration(milliseconds: 100));
         await tester.tap(find.text('Vote'));
@@ -768,7 +772,7 @@ void main() {
       await tester.tap(find.text('Confirm guess'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('The players win'), findsOneWidget);
+      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
       final Map<int, int> pointsEarned = (state.pointsEarnedThisRound as Map<int, int>);
       for (final safeVoter in safePlayers) {
         expect(pointsEarned[safeVoter], equals(100),

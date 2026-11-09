@@ -258,9 +258,9 @@ void main() {
     });
 
     testWidgets(
-        'R3.6: Game Mode Boundary Stress: Two Frauds & Undercover modes enforce min=4 and max=10',
+        'R3.6: Game Mode Boundary Stress: Two Frauds & Chaos modes enforce min=4 and max=10',
         (WidgetTester tester) async {
-      for (final modeName in ['Two Frauds', 'Undercover']) {
+      for (final modeName in ['Two Frauds', 'Chaos']) {
         await navigateToPlayers(tester, mode: modeName);
 
         // Both Two Frauds & Undercover have minPlayers = 4

@@ -76,19 +76,19 @@ const List<GameMode> availableGameModes = [
     hasUndercover: false,
   ),
   GameMode(
-    id: GameModeId.undercover,
+    id: GameModeId.soloUndercover,
     title: 'Undercover',
-    subtitle: '1 fraud + 1 undercover agent with a secret decoy word!',
-    minPlayers: 4,
-    fraudCount: 1,
+    subtitle: '1 undercover agent with a secret decoy word. No frauds!',
+    minPlayers: 3,
+    fraudCount: 0,
     hasUndercover: true,
   ),
   GameMode(
-    id: GameModeId.soloUndercover,
-    title: 'Solo Undercover',
-    subtitle: 'Just 1 undercover agent with a secret decoy word. No frauds!',
-    minPlayers: 3,
-    fraudCount: 0,
+    id: GameModeId.undercover,
+    title: 'Chaos',
+    subtitle: '1 fraud + 1 undercover agent with a secret decoy word!',
+    minPlayers: 4,
+    fraudCount: 1,
     hasUndercover: true,
   ),
 ];
@@ -421,14 +421,19 @@ class _GamePageState extends State<GamePage> {
   bool revealed = false;
 
   // Voting: every player votes, one at a time, for someone else in private.
+  int get votesPerPlayer =>
+      (selectedMode.id == GameModeId.twoFrauds || selectedMode.id == GameModeId.undercover) ? 2 : 1;
   int voteIdx = 0;
   bool voteRevealed = false;
   int? votePick;
+  Set<int> votePicks = {};
   List<int> allVotes = [];
-  Map<int, int> playerVotes = {}; // voterIndex -> targetIndex
+  Map<int, int> playerVotes = {}; // voterIndex -> targetIndex (legacy/single)
+  Map<int, List<int>> playerVotesMulti = {}; // voterIndex -> targets
   Map<int, int> voteCounts = {};
   bool fraudCaughtByMajority = false;
   Set<int> caughtFrauds = {};
+  List<int> remainingGuessers = [];
   int guessingFraudIndex = 0;
   List<String> guessOptions = [];
   int? guessPick;
@@ -524,11 +529,14 @@ class _GamePageState extends State<GamePage> {
       voteIdx = 0;
       voteRevealed = false;
       votePick = null;
+      votePicks = {};
       allVotes = [];
       playerVotes = {};
+      playerVotesMulti = {};
       voteCounts = {};
       fraudCaughtByMajority = false;
       caughtFrauds = {};
+      remainingGuessers = [];
       guessingFraudIndex = frauds.isNotEmpty ? frauds.first : (undercover ?? 0);
       guessOptions = [];
       guessPick = null;
@@ -605,26 +613,36 @@ class _GamePageState extends State<GamePage> {
       voteIdx = 0;
       voteRevealed = false;
       votePick = null;
+      votePicks = {};
       allVotes = [];
       playerVotes = {};
+      playerVotesMulti = {};
       voteCounts = {};
       fraudCaughtByMajority = false;
       caughtFrauds = {};
+      remainingGuessers = [];
       pointsEarnedThisRound = {};
       screen = Screen.vote;
     });
   }
 
   void confirmIndividualVote() {
-    if (votePick == null) return;
+    final picks = votesPerPlayer > 1
+        ? votePicks
+        : (votePick != null ? {votePick!} : <int>{});
+    if (picks.length != votesPerPlayer) return;
     Sound.vote();
     setState(() {
-      allVotes.add(votePick!);
-      playerVotes[voteIdx] = votePick!;
-      voteCounts[votePick!] = (voteCounts[votePick!] ?? 0) + 1;
+      for (final p in picks) {
+        allVotes.add(p);
+        voteCounts[p] = (voteCounts[p] ?? 0) + 1;
+      }
+      playerVotesMulti[voteIdx] = picks.toList();
+      playerVotes[voteIdx] = picks.first;
       if (voteIdx < players.length - 1) {
         voteIdx++;
         votePick = null;
+        votePicks = {};
         voteRevealed = false;
       } else {
         tallyVotes();
@@ -643,7 +661,7 @@ class _GamePageState extends State<GamePage> {
       }
     }
 
-    if (fraudIndices.isEmpty && undercoverIndex != null) {
+    if (undercoverIndex != null) {
       if ((voteCounts[undercoverIndex!] ?? 0) > majorityThreshold) {
         caughtFrauds.add(undercoverIndex!);
       }
@@ -651,9 +669,10 @@ class _GamePageState extends State<GamePage> {
 
     if (caughtFrauds.isNotEmpty) {
       fraudCaughtByMajority = true;
-      // Caught fraud with highest votes guesses
-      guessingFraudIndex = caughtFrauds.reduce(
-          (a, b) => (voteCounts[a] ?? 0) >= (voteCounts[b] ?? 0) ? a : b);
+      // Sort caught agents by votes descending so highest voted guesses first
+      remainingGuessers = caughtFrauds.toList()
+        ..sort((a, b) => (voteCounts[b] ?? 0).compareTo(voteCounts[a] ?? 0));
+      guessingFraudIndex = remainingGuessers.removeAt(0);
 
       final decoys = categories[roundCat]!
           .where((w) => w != roundWord && w != roundUndercoverWord)
@@ -685,32 +704,66 @@ class _GamePageState extends State<GamePage> {
     if (guessPick == null) return;
     Sound.guess();
     setState(() {
-      pointsEarnedThisRound.clear();
       final isCorrect = guessOptions[guessPick!] == roundWord;
       if (isCorrect) {
-        // Caught fraud guessed correctly: fraud receives 50 points, but loses the round.
+        // Caught agent guessed correctly: receives 50 points, but loses the round.
         scores[players[guessingFraudIndex]] =
             (scores[players[guessingFraudIndex]] ?? 0) + 50;
         pointsEarnedThisRound[guessingFraudIndex] = 50;
       } else {
-        // Caught fraud guessed incorrectly: fraud receives 0 points.
+        // Caught agent guessed incorrectly: receives 0 points.
         pointsEarnedThisRound[guessingFraudIndex] = 0;
       }
 
-      // All players who voted for that caught fraud receive 100 points
+      // Sequential guesses: if another caught agent is queued, advance to them
+      if (remainingGuessers.isNotEmpty) {
+        guessingFraudIndex = remainingGuessers.removeAt(0);
+        final decoys = categories[roundCat]!
+            .where((w) => w != roundWord && w != roundUndercoverWord)
+            .toList()
+          ..shuffle();
+        guessOptions = [roundWord, ...decoys.take(3)]..shuffle();
+        guessPick = null;
+        return;
+      }
+
+      // All caught agents finished guessing! Award points to voters:
       for (int voter = 0; voter < players.length; voter++) {
-        final isVotingTarget = fraudIndices.contains(voter) ||
-            (fraudIndices.isEmpty && voter == undercoverIndex);
-        if (!isVotingTarget) {
-          final target = playerVotes[voter];
-          if (target != null &&
-              (target == guessingFraudIndex || caughtFrauds.contains(target))) {
-            scores[players[voter]] =
-                (scores[players[voter]] ?? 0) + roundPoints;
+        final isAgent = fraudIndices.contains(voter) || voter == undercoverIndex;
+        if (!isAgent) {
+          final voterTargets = playerVotesMulti[voter] ??
+              (playerVotes.containsKey(voter) ? [playerVotes[voter]!] : <int>[]);
+          final caughtCount = voterTargets
+              .where((t) => caughtFrauds.contains(t) || t == guessingFraudIndex)
+              .length;
+          if (caughtCount == 1) {
+            scores[players[voter]] = (scores[players[voter]] ?? 0) + roundPoints;
             pointsEarnedThisRound[voter] = roundPoints;
+          } else if (caughtCount >= 2) {
+            // 100 pts for 1st caught agent + 50 bonus pts for catching 2nd!
+            scores[players[voter]] = (scores[players[voter]] ?? 0) + 150;
+            pointsEarnedThisRound[voter] = 150;
           }
         }
       }
+
+      // Any fraud who was NOT caught earns 100 points
+      for (final f in fraudIndices) {
+        if (!caughtFrauds.contains(f) && f != guessingFraudIndex) {
+          scores[players[f]] = (scores[players[f]] ?? 0) + roundPoints;
+          pointsEarnedThisRound[f] = roundPoints;
+        }
+      }
+
+      // Any undercover who was NOT caught earns 100 points
+      if (undercoverIndex != null &&
+          !caughtFrauds.contains(undercoverIndex!) &&
+          undercoverIndex != guessingFraudIndex) {
+        scores[players[undercoverIndex!]] =
+            (scores[players[undercoverIndex!]] ?? 0) + roundPoints;
+        pointsEarnedThisRound[undercoverIndex!] = roundPoints;
+      }
+
       screen = Screen.result;
       Sound.win();
     });
@@ -722,13 +775,13 @@ class _GamePageState extends State<GamePage> {
   String get resultTitle {
     if (!fraudCaughtByMajority) {
       if (selectedMode.fraudCount == 0 && selectedMode.hasUndercover) {
-        return 'The Undercover Wins';
+        return 'THE UNDERCOVER WINS';
       }
       return selectedMode.fraudCount > 1
-          ? 'The Frauds Win'
-          : 'The Fraud Wins';
+          ? 'THE FRAUDS WIN'
+          : 'THE FRAUD WINS';
     }
-    return 'The players win';
+    return 'THE PLAYERS WIN';
   }
 
   String get resultLine {
@@ -1782,8 +1835,8 @@ class _GamePageState extends State<GamePage> {
               Text(
                 '• Classic (1 Fraud): Exactly one player is the fraud and only knows the category. Everyone else sees the secret word.\n\n'
                 '• Two Frauds: Two players are chosen as frauds! Neither knows the secret word. Double the suspicion!\n\n'
-                '• Undercover: One fraud + one undercover player. The undercover receives a related decoy word. Both try to blend in!\n\n'
-                '• Solo Undercover: Just 1 undercover player with a decoy word and no frauds. Spot the player with the different word!',
+                '• Undercover: 1 undercover player with a secret decoy word and no frauds. Spot the player with the different word!\n\n'
+                '• Chaos: 1 fraud + 1 undercover player. The undercover receives a related decoy word. Both try to blend in!',
                 style: TextStyle(color: muted, height: 1.5),
               ),
             ],
@@ -2474,7 +2527,11 @@ class _GamePageState extends State<GamePage> {
           )),
           _primary('Tap to vote', () {
             Sound.reveal();
-            setState(() => voteRevealed = true);
+            setState(() {
+              voteRevealed = true;
+              votePick = null;
+              votePicks = {};
+            });
           }),
         ],
       );
@@ -2483,11 +2540,13 @@ class _GamePageState extends State<GamePage> {
     final others = List.generate(players.length, (i) => i)
         .where((i) => i != voteIdx)
         .toList();
+    final isMulti = votesPerPlayer > 1;
+    final isReadyToVote = isMulti ? votePicks.length == 2 : votePick != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         passTopBar(),
-        _title('Who is the fraud?'),
+        _title(isMulti ? 'Select 2 suspects' : 'Who is the fraud?'),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
@@ -2506,7 +2565,9 @@ class _GamePageState extends State<GamePage> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Vote ${voteIdx + 1} of ${players.length}',
+          isMulti
+              ? 'Vote ${voteIdx + 1} of ${players.length} • Pick 2 (${votePicks.length}/2)'
+              : 'Vote ${voteIdx + 1} of ${players.length}',
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: muted,
@@ -2516,7 +2577,7 @@ class _GamePageState extends State<GamePage> {
         ),
         const SizedBox(height: 16),
         ...others.map((i) {
-          final selected = votePick == i;
+          final selected = isMulti ? votePicks.contains(i) : votePick == i;
           return Padding(
             padding: const EdgeInsets.only(bottom: 14),
             child: Material(
@@ -2525,7 +2586,18 @@ class _GamePageState extends State<GamePage> {
                 borderRadius: BorderRadius.circular(16),
                 onTap: () {
                   Sound.tap();
-                  setState(() => votePick = i);
+                  setState(() {
+                    if (isMulti) {
+                      if (votePicks.contains(i)) {
+                        votePicks.remove(i);
+                      } else if (votePicks.length < 2) {
+                        votePicks.add(i);
+                      }
+                    } else {
+                      votePick = i;
+                      votePicks = {i};
+                    }
+                  });
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
@@ -2612,47 +2684,51 @@ class _GamePageState extends State<GamePage> {
         const SizedBox(height: 8),
         _primary(
           'Vote',
-          votePick == null ? null : confirmIndividualVote,
+          isReadyToVote ? confirmIndividualVote : null,
         ),
       ],
     );
   }
 
-  Widget _guess() => Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _title('Last chance!'),
-          _mutedText(
-              'A fraud was caught by majority vote, but they get one final guess. ${players[guessingFraudIndex]}, pick the word you think was the secret word. Guess right to steal the round!'),
-          const SizedBox(height: 10),
-          ...List.generate(guessOptions.length, (i) {
-            final selected = guessPick == i;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Sound.tap();
-                    setState(() => guessPick = i);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: selected ? blue : card2,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(color: selected ? blue : border)),
-                    textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                  child: Text(guessOptions[i], textAlign: TextAlign.center),
+  Widget _guess() {
+    final isUndercoverGuessing = guessingFraudIndex == undercoverIndex;
+    final agentText = isUndercoverGuessing ? 'An undercover agent' : 'A fraud';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _title('Last chance!'),
+        _mutedText(
+            '$agentText was caught by majority vote, but they get one final guess. ${players[guessingFraudIndex]}, pick the word you think was the secret word. Guess right to steal the round!'),
+        const SizedBox(height: 10),
+        ...List.generate(guessOptions.length, (i) {
+          final selected = guessPick == i;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Sound.tap();
+                  setState(() => guessPick = i);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: selected ? blue : card2,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: BorderSide(color: selected ? blue : border)),
+                  textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                 ),
+                child: Text(guessOptions[i], textAlign: TextAlign.center),
               ),
-            );
-          }),
-          _primary('Confirm guess', guessPick == null ? null : confirmGuess),
-        ],
-      );
+            ),
+          );
+        }),
+        _primary('Confirm guess', guessPick == null ? null : confirmGuess),
+      ],
+    );
+  }
 
   Widget _result() {
     final sorted = scores.entries.toList()
@@ -2662,7 +2738,7 @@ class _GamePageState extends State<GamePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // a. Victory/Defeat Hero Banner (No emojis)
+        // a. Victory/Defeat Hero Banner (No emojis, capitalized & golden)
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
@@ -2675,12 +2751,12 @@ class _GamePageState extends State<GamePage> {
             ),
           ),
           child: Text(
-            resultTitle,
+            resultTitle.toUpperCase(),
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w900,
-              color: ink,
+              color: yellow,
             ),
           ),
         ),
@@ -2750,7 +2826,7 @@ class _GamePageState extends State<GamePage> {
                     border: Border.all(color: border),
                   ),
                   child: Text(
-                    'Undercover: ${players[undercoverIndex!]} (Word: "$roundUndercoverWord")',
+                    'Undercover: ${players[undercoverIndex!]} ($roundUndercoverWord)',
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontWeight: FontWeight.w800, color: ink, fontSize: 13),
                   ),
@@ -2775,9 +2851,16 @@ class _GamePageState extends State<GamePage> {
                 final entry = sorted[rankIdx];
                 final pIdx = players.indexOf(entry.key);
                 final delta = pIdx != -1 ? (pointsEarnedThisRound[pIdx] ?? 0) : 0;
-                final targetIdx = pIdx != -1 ? playerVotes[pIdx] : null;
-                final votedTarget = (targetIdx != null && targetIdx >= 0 && targetIdx < players.length)
-                    ? players[targetIdx]
+                final targets = pIdx != -1
+                    ? (playerVotesMulti[pIdx] ??
+                        (playerVotes.containsKey(pIdx) ? [playerVotes[pIdx]!] : <int>[]))
+                    : <int>[];
+                final validTargets = targets
+                    .where((t) => t >= 0 && t < players.length)
+                    .map((t) => players[t])
+                    .toList();
+                final votedTarget = validTargets.isNotEmpty
+                    ? validTargets.join(', ')
                     : null;
                 final rankNum = '${rankIdx + 1}.';
 

@@ -149,9 +149,9 @@ void main() {
   });
 
   group('Role Reveal Screen Adversarial Tests (R4)', () {
-    testWidgets('Exhaustive role rendering verification in Undercover mode (Imposter, Undercover, Safe)',
+    testWidgets('Exhaustive role rendering verification in Chaos mode (Imposter, Undercover, Safe)',
         (WidgetTester tester) async {
-      await startRoundInMode(tester, modeTitle: 'Undercover');
+      await startRoundInMode(tester, modeTitle: 'Chaos');
 
       final dynamic state = tester.state(find.byType(GamePage));
       final Set<int> fraudIndices = (state.fraudIndices as Set<int>);

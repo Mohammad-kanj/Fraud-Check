@@ -231,7 +231,7 @@ void main() {
 
       // RESULTS SCREEN - ROUND 1
       expect(state.screen.toString(), contains('result'));
-      expect(find.text('The players win'), findsOneWidget);
+      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
       expect(find.text('Total Leaderboard'), findsOneWidget);
 
       // Verify Round 1 Scoring:
@@ -309,7 +309,7 @@ void main() {
 
       // RESULTS SCREEN - ROUND 2
       expect(state.screen.toString(), contains('result'));
-      expect(find.text('The Fraud Wins'), findsOneWidget);
+      expect(find.text('THE FRAUD WINS'), findsOneWidget);
 
       // Round 2 Outcome:
       // The fraud escaped! The fraud earned 100 points this round.
@@ -426,9 +426,9 @@ void main() {
       }
     });
 
-    testWidgets('Undercover Mode: Undercover player sees eye emoji, category at top, "YOU ARE UNDERCOVER", locked icon, and decoy word',
+    testWidgets('Chaos Mode: Undercover player sees eye emoji, category at top, "YOU ARE UNDERCOVER", locked icon, and decoy word',
         (WidgetTester tester) async {
-      await startRoundWithPlayerCount(tester, targetCount: 4, modeTitle: 'Undercover', category: 'Food');
+      await startRoundWithPlayerCount(tester, targetCount: 4, modeTitle: 'Chaos', category: 'Food');
 
       final dynamic state = tester.state(find.byType(GamePage));
       final int undercoverIdx = state.undercoverIndex as int;

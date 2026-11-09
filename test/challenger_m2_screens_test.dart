@@ -430,18 +430,18 @@ void main() {
       );
 
       // Verify victory banner headline (no emoji, single sentence, no text under)
-      expect(find.text('The players win'), findsOneWidget);
+      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
       expect(
         find.text('The fraud was caught by majority vote and failed to guess the secret word.'),
         findsNothing,
       );
 
-      // Verify headline text color
-      final headline = tester.widget<Text>(find.text('The players win'));
-      expect(headline.style?.color, ink);
+      // Verify headline text color is golden like scores
+      final headline = tester.widget<Text>(find.text('THE PLAYERS WIN'));
+      expect(headline.style?.color, yellow);
     });
 
-    testWidgets('END.2: Defeat Hero Banner renders single sentence "The Fraud Wins"',
+    testWidgets('END.2: Defeat Hero Banner renders single sentence "THE FRAUD WINS"',
         (WidgetTester tester) async {
       // Scenario A: Fraud escaped without being caught
       await setupEndScreen(
@@ -450,10 +450,10 @@ void main() {
         fraudGuessedCorrectly: false,
       );
 
-      expect(find.text('The Fraud Wins'), findsOneWidget);
+      expect(find.text('THE FRAUD WINS'), findsOneWidget);
 
-      final headlineA = tester.widget<Text>(find.text('The Fraud Wins'));
-      expect(headlineA.style?.color, ink);
+      final headlineA = tester.widget<Text>(find.text('THE FRAUD WINS'));
+      expect(headlineA.style?.color, yellow);
 
       // Scenario B: Fraud caught by majority and guessed secret word correctly (fraud loses round, receives 50 pts, voters receive 100 pts)
       await setupEndScreen(
@@ -462,7 +462,7 @@ void main() {
         fraudGuessedCorrectly: true,
       );
 
-      expect(find.text('The players win'), findsOneWidget);
+      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
     });
 
     testWidgets('END.3: Secret Word Reveal Card displays secret word and fraud badge (category & mode removed)',
@@ -506,7 +506,7 @@ void main() {
       });
       await tester.pump(const Duration(milliseconds: 50));
 
-      final underBadge = find.text('Undercover: Bob (Word: "Hummus")');
+      final underBadge = find.text('Undercover: Bob (Hummus)');
       expect(underBadge, findsOneWidget);
     });
 

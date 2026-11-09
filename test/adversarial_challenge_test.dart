@@ -130,12 +130,12 @@ void main() {
       }
     });
 
-    testWidgets('Undercover mode: min is 4, max is 10',
+    testWidgets('Chaos mode: min is 4, max is 10',
         (WidgetTester tester) async {
-      await navigateToPlayersWithMode(tester, modeName: 'Undercover');
+      await navigateToPlayersWithMode(tester, modeName: 'Chaos');
 
       // Verify mode badge
-      expect(find.text('Mode: Undercover'), findsOneWidget);
+      expect(find.text('Mode: Chaos'), findsOneWidget);
       expect(find.byType(TextField), findsNWidgets(4));
 
       // At 4 players, remove buttons are disabled
@@ -255,9 +255,9 @@ void main() {
   });
 
   group('Adversarial Stress Test: Role Reveal in Undercover and Two Frauds', () {
-    testWidgets('Undercover mode: exactly 1 fraud, 1 undercover, remainder safe',
+    testWidgets('Chaos mode: exactly 1 fraud, 1 undercover, remainder safe',
         (WidgetTester tester) async {
-      await navigateToPlayersWithMode(tester, modeName: 'Undercover');
+      await navigateToPlayersWithMode(tester, modeName: 'Chaos');
       await tester.tap(find.text('Start round'));
       await tester.pump(const Duration(milliseconds: 100));
 

@@ -7,17 +7,25 @@ void main() {
     Sound.enabled = false;
   });
 
-  group('Requirement 1: Solo Undercover Mode', () {
+  group('Requirement 1: Undercover Mode (Solo)', () {
     test('GameModeId.soloUndercover exists with fraudCount=0 and hasUndercover=true', () {
       final mode = availableGameModes.firstWhere((m) => m.id == GameModeId.soloUndercover);
-      expect(mode.title, 'Solo Undercover');
+      expect(mode.title, 'Undercover');
+      expect(mode.subtitle, '1 undercover agent with a secret decoy word. No frauds!');
       expect(mode.fraudCount, 0);
       expect(mode.hasUndercover, isTrue);
       expect(mode.minPlayers, 3);
       expect(mode.maxPlayers, 10);
     });
 
-    testWidgets('Mode selection screen displays Solo Undercover card with "1 Undercover" badge', (tester) async {
+    test('GameModeId.undercover exists as Chaos mode', () {
+      final mode = availableGameModes.firstWhere((m) => m.id == GameModeId.undercover);
+      expect(mode.title, 'Chaos');
+      expect(mode.fraudCount, 1);
+      expect(mode.hasUndercover, isTrue);
+    });
+
+    testWidgets('Mode selection screen displays Undercover card with "1 Undercover" badge', (tester) async {
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -25,9 +33,10 @@ void main() {
       state.go(Screen.mode);
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Solo Undercover'), findsOneWidget);
+      expect(find.text('Undercover'), findsOneWidget);
+      expect(find.text('Chaos'), findsOneWidget);
       expect(find.text('1 Undercover'), findsOneWidget);
-      expect(find.text('3 to 10 players'), findsNWidgets(2)); // Classic and Solo Undercover
+      expect(find.text('3 to 10 players'), findsNWidgets(2)); // Classic and Undercover (solo)
     });
 
     testWidgets('Starting round in Solo Undercover mode assigns 0 frauds and 1 undercover', (tester) async {
@@ -127,7 +136,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(state.screen, Screen.result);
-      expect(find.text('The players win'), findsOneWidget);
+      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
       expect(state.scores['Bob'], 0);
       expect(state.scores['Alice'], 100);
       expect(state.scores['Charlie'], 100);
@@ -158,7 +167,7 @@ void main() {
 
       expect(state.screen, Screen.result);
       expect(state.fraudCaughtByMajority, isFalse);
-      expect(find.text('The Undercover Wins'), findsOneWidget);
+      expect(find.text('THE UNDERCOVER WINS'), findsOneWidget);
       expect(state.scores['Bob'], 100);
       expect(state.scores['Alice'], 0);
       expect(state.scores['Charlie'], 0);
@@ -188,13 +197,13 @@ void main() {
       expect(find.text('Mode: Classic'), findsNothing);
       expect(find.text('Mode: Two Frauds'), findsNothing);
       expect(find.text('Mode: Undercover'), findsNothing);
-      expect(find.text('Mode: Solo Undercover'), findsNothing);
+      expect(find.text('Mode: Chaos'), findsNothing);
       expect(find.text('Animals'), findsNothing);
       expect(find.text('SECRET WORD'), findsOneWidget);
       expect(find.text('Lion'), findsOneWidget);
     });
 
-    testWidgets('Fraud wins box shows single sentence "The Fraud Wins" with no text under', (tester) async {
+    testWidgets('Fraud wins box shows single sentence "THE FRAUD WINS" with golden text and no text under', (tester) async {
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -212,14 +221,16 @@ void main() {
       });
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('The Fraud Wins'), findsOneWidget);
+      expect(find.text('THE FRAUD WINS'), findsOneWidget);
+      final textWidget = tester.widget<Text>(find.text('THE FRAUD WINS'));
+      expect(textWidget.style?.color, equals(yellow));
       // Ensure old multi-line texts are absent
       expect(find.text('THE FRAUD ESCAPED!'), findsNothing);
       expect(find.text('The fraud wins!'), findsNothing);
       expect(find.textContaining('takes the round'), findsNothing);
     });
 
-    testWidgets('Players win box shows single sentence "The players win" with no text under', (tester) async {
+    testWidgets('Players win box shows single sentence "THE PLAYERS WIN" with golden text and no text under', (tester) async {
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -237,7 +248,9 @@ void main() {
       });
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('The players win'), findsOneWidget);
+      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
+      final textWidget = tester.widget<Text>(find.text('THE PLAYERS WIN'));
+      expect(textWidget.style?.color, equals(yellow));
       // Ensure old banners and explanations are absent
       expect(find.text('PLAYERS IN THE KNOW WIN!'), findsNothing);
       expect(find.text('The players in the know win!'), findsNothing);

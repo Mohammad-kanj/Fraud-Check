@@ -72,7 +72,7 @@ void main() {
       expect(state.pointsEarnedThisRound[2], isNull);
 
       // 3. Verify Victory Banner text & color (Group victory, not fraud victory)
-      expect(find.text('The players win'), findsOneWidget);
+      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
 
       // 4. Verify Leaderboard deltas and vote indicators
       expect(find.text('+50'), findsOneWidget); // David
@@ -134,7 +134,7 @@ void main() {
       expect(state.pointsEarnedThisRound[2], equals(100));
 
       // 3. Verify Victory Banner text & color
-      expect(find.text('The players win'), findsOneWidget);
+      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
 
       // 4. Verify Leaderboard deltas and vote indicators
       expect(find.text('+50'), findsNothing); // No 50 pts
@@ -181,7 +181,7 @@ void main() {
       expect(state.scores['Charlie'], equals(20));
 
       // 3. Verify Defeat Banner text
-      expect(find.text('The Fraud Wins'), findsOneWidget);
+      expect(find.text('THE FRAUD WINS'), findsOneWidget);
 
       // 4. Verify Leaderboard shows +100 for fraud, nothing for safe players
       expect(find.text('+100'), findsOneWidget); // Only David
@@ -317,9 +317,9 @@ void main() {
       expect(state.scores['Charlie'], equals(50));
       expect(state.pointsEarnedThisRound[2], equals(50));
 
-      // David (uncaught second fraud) earns 0 pts!
-      expect(state.scores['David'], equals(0));
-      expect(state.pointsEarnedThisRound[3], isNull);
+      // David (uncaught second fraud who escaped) earns 100 pts!
+      expect(state.scores['David'], equals(100));
+      expect(state.pointsEarnedThisRound[3], equals(100));
 
       // Alice, Bob, Eve (safe players who voted for Charlie) earn 100 pts
       expect(state.scores['Alice'], equals(100));
@@ -330,7 +330,7 @@ void main() {
       expect(state.pointsEarnedThisRound[4], equals(100));
 
       // Group victory banner
-      expect(find.text('The players win'), findsOneWidget);
+      expect(find.text('THE PLAYERS WIN'), findsOneWidget);
       expect(find.text('voted Charlie'), findsNWidgets(3)); // Alice, Bob, Eve
       expect(find.text('voted David'), findsOneWidget); // Charlie
       expect(find.text('voted Alice'), findsOneWidget); // David

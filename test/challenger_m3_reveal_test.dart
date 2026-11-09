@@ -344,10 +344,10 @@ void main() {
       expect(safeCountObserved, equals(3));
     });
 
-    testWidgets('G3.3: Undercover Mode - Undercover player renders UNDERCOVER role banner and decoy word',
+    testWidgets('G3.3: Chaos Mode - Undercover player renders UNDERCOVER role banner and decoy word',
         (WidgetTester tester) async {
       setDefaultScreen(tester);
-      await startRound(tester, modeTitle: 'Undercover', category: 'Food', targetPlayerCount: 4);
+      await startRound(tester, modeTitle: 'Chaos', category: 'Food', targetPlayerCount: 4);
 
       final dynamic state = tester.state(find.byType(GamePage));
       final Set<int> fraudIndices = (state.fraudIndices as Set<int>);
@@ -465,10 +465,10 @@ void main() {
       }
     });
 
-    testWidgets('G4.3: Undercover Mode (4 players) - Zero sequence counters across all reveals',
+    testWidgets('G4.3: Chaos Mode (4 players) - Zero sequence counters across all reveals',
         (WidgetTester tester) async {
       setDefaultScreen(tester);
-      await startRound(tester, modeTitle: 'Undercover', category: 'Food', targetPlayerCount: 4);
+      await startRound(tester, modeTitle: 'Chaos', category: 'Food', targetPlayerCount: 4);
 
       for (int i = 0; i < 4; i++) {
         await tester.tap(find.text('Tap to reveal'));

@@ -50,7 +50,7 @@ void main() {
       expect(state.scores['Bob'], equals(0));
       expect(state.scores['Charlie'], equals(0));
 
-      expect(find.text('The Fraud Wins'), findsOneWidget);
+      expect(find.text('THE FRAUD WINS'), findsOneWidget);
       expect(find.text('voted David'), findsNWidgets(2));
       expect(find.text('voted Alice'), findsNWidgets(2));
       expect(tester.takeException(), isNull);
@@ -84,7 +84,7 @@ void main() {
       expect(state.screen, Screen.result);
       expect(state.fraudCaughtByMajority, isFalse);
       expect(state.scores['Charlie'], equals(100));
-      expect(find.text('The Fraud Wins'), findsOneWidget);
+      expect(find.text('THE FRAUD WINS'), findsOneWidget);
       expect(find.textContaining('voted'), findsNothing);
       expect(tester.takeException(), isNull);
     });
@@ -143,7 +143,7 @@ void main() {
     // -------------------------------------------------------------------------
     // EDGE 4: Undercover Busted with Majority Votes when Fraud Escapes
     // -------------------------------------------------------------------------
-    testWidgets('EDGE-4: Fraud escapes, but Undercover receives > majority votes: Fraud earns +100, Undercover earns 0',
+    testWidgets('EDGE-4: Fraud escapes, Undercover caught: Undercover guesses and voters earn 100 pts',
         (WidgetTester tester) async {
       setViewport(tester);
       await tester.pumpWidget(const FraudCheckApp());
@@ -159,9 +159,9 @@ void main() {
         state.roundUndercoverWord = 'Kyoto';
         state.fraudIndices = {3}; // David is fraud
         state.undercoverIndex = 2; // Charlie is undercover
-        state.selectedMode = availableGameModes[2]; // Undercover mode
+        state.selectedMode = availableGameModes.firstWhere((m) => m.id == GameModeId.undercover); // Chaos mode
 
-        // Votes: 3 for Charlie (Undercover busted!), 1 for David (Fraud escapes)
+        // Votes: 3 for Charlie (Undercover caught!), 1 for David (Fraud escapes)
         // Majority of 4 is > 2. Charlie gets 3 votes (> 2). David gets 1 vote.
         state.playerVotes = {0: 2, 1: 2, 2: 3, 3: 2};
         state.voteCounts = {2: 3, 3: 1};
@@ -171,22 +171,30 @@ void main() {
       });
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(state.screen, Screen.result);
-      expect(state.fraudCaughtByMajority, isFalse);
+      expect(state.screen, Screen.guess);
+      expect(state.guessingFraudIndex, 2);
 
-      // David (fraud) earns 100
+      // Charlie misses guess
+      state.setState(() {
+        state.guessPick = state.guessOptions.indexWhere((w) => w != 'Tokyo');
+        state.confirmGuess();
+      });
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(state.screen, Screen.result);
+
+      // David (fraud who escaped) earns 100
       expect(state.scores['David'], equals(100));
       expect(state.pointsEarnedThisRound[3], equals(100));
 
-      // Charlie (undercover) received 3 votes (> 2 majority), so Charlie earns 0!
+      // Charlie (undercover) missed guess -> earns 0!
       expect(state.scores['Charlie'], equals(0));
-      expect(state.pointsEarnedThisRound[2], isNull);
+      expect(state.pointsEarnedThisRound[2], equals(0));
 
-      // Safe players earn 0
-      expect(state.scores['Alice'], equals(0));
-      expect(state.scores['Bob'], equals(0));
+      // Alice and Bob who voted for caught undercover earn 100
+      expect(state.scores['Alice'], equals(100));
+      expect(state.scores['Bob'], equals(100));
 
-      expect(find.text('+100'), findsOneWidget); // Only David
       expect(tester.takeException(), isNull);
     });
 

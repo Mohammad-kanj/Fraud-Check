@@ -239,17 +239,17 @@ void main() {
       expect(encounteredSafe, isTrue, reason: 'Must have tested at least one safe player');
     });
 
-    testWidgets('Criteria 4b: Role Reveal - Undercover Mode renders "👁️ UNDERCOVER" and "👁️ FRAUD" with no lock icons',
+    testWidgets('Criteria 4b: Role Reveal - Chaos Mode renders "👁️ UNDERCOVER" and "👁️ FRAUD" with no lock icons',
         (WidgetTester tester) async {
       setMobileScreen(tester);
       await tester.pumpWidget(const FraudCheckApp());
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Start Undercover game
+      // Start Chaos game
       await tester.tap(find.text('Play'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      await tester.tap(find.text('Undercover'));
+      await tester.tap(find.text('Chaos'));
       await tester.pump(const Duration(milliseconds: 100));
 
       await tester.tap(find.text('Food'));
