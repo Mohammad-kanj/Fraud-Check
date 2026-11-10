@@ -656,7 +656,7 @@ class _GamePageState extends State<GamePage> {
 
   void removePlayerAt(int index) {
     if (players.length <= selectedMode.minPlayers) return;
-    Sound.tap();
+    Sound.vote();
     setState(() {
       players.removeAt(index);
       playerCount = players.length;
@@ -783,6 +783,7 @@ class _GamePageState extends State<GamePage> {
   }
 
   void startVoting() {
+    Sound.vote();
     timer?.cancel();
     setState(() {
       voteIdx = 0;
