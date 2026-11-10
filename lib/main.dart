@@ -624,7 +624,7 @@ class _GamePageState extends State<GamePage> {
 
   void go(Screen s) {
     setState(() {
-      if (s == Screen.home || s == Screen.mode) {
+      if (s == Screen.home || s == Screen.mode || s == Screen.category) {
         chosenCat = null;
       }
       screen = s;
@@ -871,7 +871,7 @@ class _GamePageState extends State<GamePage> {
         pointsEarnedThisRound[undercoverIndex!] = roundPoints;
       }
       screen = Screen.result;
-      Sound.win();
+      Sound.lose();
     }
   }
 
@@ -940,7 +940,11 @@ class _GamePageState extends State<GamePage> {
       }
 
       screen = Screen.result;
-      Sound.win();
+      if (resultTitle == 'THE PLAYERS WIN') {
+        Sound.win();
+      } else {
+        Sound.lose();
+      }
     });
   }
 
@@ -1066,7 +1070,14 @@ class _GamePageState extends State<GamePage> {
           ),
         ),
         child: InkWell(
-          onTap: onTap,
+          onTap: () {
+            if (label == 'Back to main menu') {
+              Sound.vote();
+            } else {
+              Sound.tap();
+            }
+            onTap();
+          },
           customBorder: const StadiumBorder(),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
@@ -1102,7 +1113,10 @@ class _GamePageState extends State<GamePage> {
           IconButton(
             icon: const Icon(Icons.more_vert),
             tooltip: 'Options',
-            onPressed: showPassOptions,
+            onPressed: () {
+              Sound.tap();
+              showPassOptions();
+            },
           ),
         ],
       );
@@ -1114,6 +1128,7 @@ class _GamePageState extends State<GamePage> {
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (screen != Screen.home) {
+          Sound.vote();
           go(Screen.home);
         }
       },
@@ -1484,7 +1499,7 @@ class _GamePageState extends State<GamePage> {
             );
           }),
           const SizedBox(height: 8),
-          _secondary('Back to main menu', () => go(Screen.home)),
+          _secondary('Back to main menu', () { Sound.vote(); go(Screen.home); }),
         ],
       );
 
@@ -1495,7 +1510,10 @@ class _GamePageState extends State<GamePage> {
           _title('Pick a category'),
           const SizedBox(height: 6),
           OutlinedButton.icon(
-            onPressed: () => go(Screen.mode),
+            onPressed: () {
+              Sound.tap();
+              go(Screen.mode);
+            },
             icon: const Icon(Icons.swap_horiz_rounded, size: 15, color: yellow),
             label: Text(
               'Change mode (${selectedMode.title})',
@@ -1547,7 +1565,7 @@ class _GamePageState extends State<GamePage> {
           ),
         ),
         const SizedBox(height: 16),
-          _secondary('Back to main menu', () => go(Screen.home)),
+          _secondary('Back to main menu', () { Sound.vote(); go(Screen.home); }),
         ],
       );
 
@@ -1714,7 +1732,7 @@ class _GamePageState extends State<GamePage> {
                   startRound();
                 }),
           const SizedBox(height: 8),
-          _secondary('Back to main menu', () => go(Screen.home)),
+          _secondary('Back to main menu', () { Sound.vote(); go(Screen.home); }),
         ],
       );
 
@@ -1908,7 +1926,7 @@ class _GamePageState extends State<GamePage> {
             ),
           ),
           const SizedBox(height: 10),
-          _secondary('Back to main menu', () => go(Screen.home)),
+          _secondary('Back to main menu', () { Sound.vote(); go(Screen.home); }),
         ],
       );
 
@@ -1979,7 +1997,7 @@ class _GamePageState extends State<GamePage> {
             ],
           )),
           const SizedBox(height: 8),
-          _secondary('Back to main menu', () => go(Screen.home)),
+          _secondary('Back to main menu', () { Sound.vote(); go(Screen.home); }),
         ],
       );
 
@@ -2630,7 +2648,7 @@ class _GamePageState extends State<GamePage> {
             ],
           )),
           _primary('Tap to vote', () {
-            Sound.reveal();
+            Sound.guess();
             setState(() {
               voteRevealed = true;
               votePick = null;
@@ -2800,6 +2818,8 @@ class _GamePageState extends State<GamePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        passTopBar(),
+        const SizedBox(height: 4),
         _title('Last chance!'),
         _mutedText(
             '$agentText was caught by majority vote, but they get one final guess. ${players[guessingFraudIndex]}, pick the word you think was the secret word. Guess right to steal the round!'),
@@ -3068,10 +3088,12 @@ class _GamePageState extends State<GamePage> {
         // d. Continue Button: Preserves cumulative scores and prompts back to category selection
         _primary('Continue', () {
           Sound.tap();
+          chosenCat = null;
           go(Screen.category);
         }),
         const SizedBox(height: 8),
         _secondary('Return to main menu', () {
+          Sound.vote();
           timer?.cancel();
           go(Screen.home);
         }),
