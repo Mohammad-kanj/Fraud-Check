@@ -100,7 +100,7 @@ const List<GameMode> availableGameModes = [
 class Sound {
   static bool enabled = true;
   static double volume = 0.8;
-  static final AudioPlayer _player = AudioPlayer();
+  static final AudioPlayer _player = AudioPlayer()..setPlayerMode(PlayerMode.lowLatency);
 
   static Future<void> setVolume(double val) async {
     volume = val.clamp(0.0, 1.0);
