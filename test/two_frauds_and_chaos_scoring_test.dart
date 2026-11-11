@@ -58,7 +58,9 @@ void main() {
       expect(find.text('Vote'), findsOneWidget);
 
       // Submit vote
-      await tester.tap(find.text('Vote'));
+      final voteSubmitBtn = find.text('Vote');
+      await tester.ensureVisible(voteSubmitBtn);
+      await tester.tap(voteSubmitBtn);
       await tester.pump(const Duration(milliseconds: 100));
 
       // Alice's picks should be recorded in playerVotesMulti

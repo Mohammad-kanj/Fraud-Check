@@ -99,6 +99,10 @@ void main() {
       await tester.ensureVisible(rulesBackBtn);
       await tester.tap(rulesBackBtn);
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(state.screen, equals(Screen.home));
 
       // Settings
@@ -111,6 +115,10 @@ void main() {
       await tester.ensureVisible(settingsBackBtn);
       await tester.tap(settingsBackBtn);
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(state.screen, equals(Screen.home));
 
       // Mode

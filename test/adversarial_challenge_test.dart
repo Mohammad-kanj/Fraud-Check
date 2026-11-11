@@ -109,6 +109,10 @@ void main() {
       // Back to main menu
       await tester.tap(find.text('Back to main menu'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       // Now navigate to Two Frauds mode
       await tester.tap(find.text('Play'));
@@ -218,6 +222,14 @@ void main() {
       // Back to main menu
       await tester.tap(find.text('Back to main menu'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(find.text('Play'), findsOneWidget);
     });
 
@@ -234,6 +246,10 @@ void main() {
       // Tap 'Change players'
       await tester.tap(find.text('Change players'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       // Should be back on Screen.players
       expect(find.text('Players'), findsOneWidget);
@@ -248,6 +264,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       await tester.tap(find.text('Back to main menu'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       // Should be back on HomeScreen
       expect(find.text('FRAUD CHECK'), findsOneWidget);

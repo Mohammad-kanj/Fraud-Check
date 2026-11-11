@@ -612,6 +612,8 @@ class _GamePageState extends State<GamePage> {
   int questionTurnIdx = 0;
   List<int> questionAskers = [];
   List<int> questionTargets = [];
+  final ScrollController mainScrollController = ScrollController();
+  int rulesTabIdx = 0;
 
   // Points awarded this round
   Map<int, int> pointsEarnedThisRound = {};
@@ -623,6 +625,9 @@ class _GamePageState extends State<GamePage> {
   }
 
   void go(Screen s) {
+    if (mainScrollController.hasClients) {
+      mainScrollController.jumpTo(0);
+    }
     setState(() {
       if (s == Screen.home || s == Screen.mode || s == Screen.category) {
         chosenCat = null;
@@ -768,8 +773,67 @@ class _GamePageState extends State<GamePage> {
     }
   }
 
-  void advanceQuestionTurn() {
+  void advanceQuestionTurn() async {
     Sound.tap();
+    final roundSize = players.isNotEmpty ? players.length : 1;
+    final isRoundEnd = (questionTurnIdx + 1) % roundSize == 0;
+
+    if (isRoundEnd) {
+      final currentRound = (questionTurnIdx ~/ roundSize) + 1;
+      final choice = await showDialog<String>(
+        context: context,
+        barrierDismissible: true,
+        builder: (ctx) => Dialog(
+          backgroundColor: card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: border, width: 1.5),
+          ),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Round $currentRound Complete!',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: ink,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'All players have asked a question. Are you ready to vote, or play another round of questioning?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: muted,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _primary('Vote now', () {
+                  Navigator.pop(ctx, 'vote');
+                }),
+                const SizedBox(height: 10),
+                _secondary('Another round', () {
+                  Navigator.pop(ctx, 'next');
+                }),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (!mounted) return;
+      if (choice == 'vote') {
+        startVoting();
+        return;
+      }
+    }
+
     setState(() {
       questionTurnIdx++;
       if (questionAskers.isNotEmpty && questionTargets.isNotEmpty) {
@@ -787,7 +851,7 @@ class _GamePageState extends State<GamePage> {
     timer?.cancel();
     setState(() {
       voteIdx = 0;
-      voteRevealed = false;
+      voteRevealed = true;
       votePick = null;
       votePicks = {};
       allVotes = [];
@@ -819,7 +883,7 @@ class _GamePageState extends State<GamePage> {
         voteIdx++;
         votePick = null;
         votePicks = {};
-        voteRevealed = false;
+        voteRevealed = true;
       } else {
         tallyVotes();
       }
@@ -984,6 +1048,84 @@ class _GamePageState extends State<GamePage> {
     return 'The fraud was caught by majority vote and failed to guess the secret word.';
   }
 
+  Future<bool> _confirmAction({
+    required String title,
+    required String message,
+    String confirmLabel = 'Confirm',
+    Color confirmColor = red,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        backgroundColor: card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: border, width: 1.5),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: ink,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: muted,
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _secondary('Cancel', () {
+                      Sound.tap();
+                      Navigator.pop(ctx, false);
+                    }),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _primary(confirmLabel, () {
+                      Sound.vote();
+                      Navigator.pop(ctx, true);
+                    }, color: confirmColor),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<void> confirmGoHome() async {
+    final ok = await _confirmAction(
+      title: 'Return to Main Menu?',
+      message: 'Are you sure you want to return to the main menu?',
+      confirmLabel: 'Confirm',
+    );
+    if (ok && mounted) {
+      timer?.cancel();
+      go(Screen.home);
+    }
+  }
+
   // Passing phone dialog: strictly for round control, NO mode switching mid-round.
   Future<void> showPassOptions() async {
     final choice = await showDialog<String>(
@@ -1143,6 +1285,8 @@ class _GamePageState extends State<GamePage> {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 640),
                   child: SingleChildScrollView(
+                    key: ValueKey(screen),
+                    controller: mainScrollController,
                     padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
                     child: switch (screen) {
                       Screen.home => _home(),
@@ -1219,13 +1363,13 @@ class _GamePageState extends State<GamePage> {
         ),
       );
 
-  Widget _primary(String label, VoidCallback? onPressed) => SizedBox(
+  Widget _primary(String label, VoidCallback? onPressed, {Color? color}) => SizedBox(
         width: double.infinity,
         child: ElevatedButton(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
-            backgroundColor: yellow,
-            foregroundColor: const Color(0xFF1A1400),
+            backgroundColor: color ?? yellow,
+            foregroundColor: color != null ? Colors.white : const Color(0xFF1A1400),
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
@@ -1500,7 +1644,7 @@ class _GamePageState extends State<GamePage> {
             );
           }),
           const SizedBox(height: 8),
-          _secondary('Back to main menu', () { Sound.vote(); go(Screen.home); }),
+          _secondary('Back to main menu', () { confirmGoHome(); }),
         ],
       );
 
@@ -1566,7 +1710,7 @@ class _GamePageState extends State<GamePage> {
           ),
         ),
         const SizedBox(height: 16),
-          _secondary('Back to main menu', () { Sound.vote(); go(Screen.home); }),
+          _secondary('Back to main menu', () { confirmGoHome(); }),
         ],
       );
 
@@ -1591,10 +1735,18 @@ class _GamePageState extends State<GamePage> {
                     color: yellow, fontSize: 13, fontWeight: FontWeight.w800)),
           ),
           const SizedBox(height: 8),
-          Text(
-            '${selectedMode.minPlayers} to ${selectedMode.maxPlayers} players. Names are optional.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: muted, fontSize: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: card2,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: border),
+            ),
+            child: Text(
+              '${selectedMode.minPlayers} to ${selectedMode.maxPlayers} players. Names are optional.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: ink, fontSize: 14, fontWeight: FontWeight.w600),
+            ),
           ),
           const SizedBox(height: 16),
           // Player rows
@@ -1733,7 +1885,7 @@ class _GamePageState extends State<GamePage> {
                   startRound();
                 }),
           const SizedBox(height: 8),
-          _secondary('Back to main menu', () { Sound.vote(); go(Screen.home); }),
+          _secondary('Back to main menu', () { confirmGoHome(); }),
         ],
       );
 
@@ -1927,80 +2079,120 @@ class _GamePageState extends State<GamePage> {
             ),
           ),
           const SizedBox(height: 10),
-          _secondary('Back to main menu', () { Sound.vote(); go(Screen.home); }),
+          _secondary('Back to main menu', () { confirmGoHome(); }),
         ],
       );
 
-  Widget _rules() => Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _title('Rules'),
-          _mutedText('Pass-and-play party game of deception and deduction.\n3–10 players on one device.'),
-          const SizedBox(height: 10),
-          _card(Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text('Overview',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
-              SizedBox(height: 6),
-              Text(
-                '• One or more players are secret frauds who only know the category.\n\n'
-                '• Everyone else receives the secret word and must deduce who is bluffing.\n\n'
-                '• The fraud\'s objective is to blend in, avoid detection, and guess the secret word.',
-                style: TextStyle(color: muted, height: 1.5),
+  Widget _rules() {
+    final tags = ['Overview', 'Roles & Objectives', 'Questioning Phase', 'Voting & Scoring'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _title('Rules'),
+        _mutedText('Pass-and-play party game of deception and deduction.\n3–10 players on one device.'),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: List.generate(tags.length, (idx) {
+            final active = rulesTabIdx == idx;
+            return GestureDetector(
+              onTap: () {
+                Sound.tap();
+                setState(() => rulesTabIdx = idx);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: active ? yellow : card2,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: active ? yellow : border,
+                    width: active ? 1.5 : 1.0,
+                  ),
+                  boxShadow: active
+                      ? [
+                          BoxShadow(
+                            color: yellow.withValues(alpha: 0.25),
+                            blurRadius: 10,
+                            spreadRadius: 1,
+                          )
+                        ]
+                      : null,
+                ),
+                child: Text(
+                  tags[idx],
+                  style: TextStyle(
+                    color: active ? const Color(0xFF1A1400) : muted,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
               ),
-            ],
-          )),
-          _card(Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text('Roles & Objectives',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
-              SizedBox(height: 6),
-              Text(
-                '• Classic (1 Fraud): Exactly one player is the fraud and only knows the category. Everyone else sees the secret word.\n\n'
-                '• Two Frauds: Two players are chosen as frauds! Neither knows the secret word. Double the suspicion!\n\n'
-                '• Undercover: 1 undercover player with a secret decoy word and no frauds. Spot the player with the different word!\n\n'
-                '• Chaos: 1 fraud + 1 undercover player. The undercover receives a related decoy word. Both try to blend in!',
-                style: TextStyle(color: muted, height: 1.5),
-              ),
-            ],
-          )),
-          _card(Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text('Questioning Phase',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
-              SizedBox(height: 6),
-              Text(
-                '1. Pass the phone: Each player secretly reveals their role in private.\n\n'
-                '2. Discuss: Take turns asking smart questions and giving vague clues. Never say your secret word!\n\n'
-                '3. Infinite rounds: Questioning continues until players are ready to vote.',
-                style: TextStyle(color: muted, height: 1.5),
-              ),
-            ],
-          )),
-          _card(Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text('Voting & Scoring',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: yellow)),
-              SizedBox(height: 6),
-              Text(
-                '• Secret Vote: Every player votes privately for who they suspect is the fraud.\n\n'
-                '• Last chance: If a fraud is caught by majority vote (>= 50%), they get 4 word options to guess the secret word.\n\n'
-                '• Caught Fraud guesses correctly: The fraud earns 50 points, but loses the round! All players who voted for that fraud earn +100 points.\n\n'
-                '• Caught Fraud misses guess: The fraud earns 0 points. All players who voted for that fraud earn +100 points!\n\n'
-                '• Fraud Escapes: If no fraud receives majority votes, frauds win the round and earn +100 points each.\n\n'
-                '• Undercover: Earns +100 points if they vote for the fraud or survive unexposed.',
-                style: TextStyle(color: muted, height: 1.5),
-              ),
-            ],
-          )),
-          const SizedBox(height: 8),
-          _secondary('Back to main menu', () { Sound.vote(); go(Screen.home); }),
-        ],
-      );
+            );
+          }),
+        ),
+        const SizedBox(height: 14),
+        IndexedStack(
+          index: rulesTabIdx,
+          children: [
+            _card(Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  '• One or more players are secret frauds who only know the category.\n\n'
+                  '• Everyone else receives the secret word and must deduce who is bluffing.\n\n'
+                  '• The fraud\'s objective is to blend in, avoid detection, and guess the secret word.',
+                  style: TextStyle(color: muted, height: 1.5),
+                ),
+              ],
+            )),
+            _card(Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  '• Classic (1 Fraud): Exactly one player is the fraud and only knows the category. Everyone else sees the secret word.\n\n'
+                  '• Two Frauds: Two players are chosen as frauds! Neither knows the secret word. Double the suspicion!\n\n'
+                  '• Undercover: 1 undercover player with a secret decoy word and no frauds. Spot the player with the different word!\n\n'
+                  '• Chaos: 1 fraud + 1 undercover player. The undercover receives a related decoy word. Both try to blend in!',
+                  style: TextStyle(color: muted, height: 1.5),
+                ),
+              ],
+            )),
+            _card(Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  '1. Pass the phone: Each player secretly reveals their role in private.\n\n'
+                  '2. Structured rounds: Players take turns asking questions. At the end of each round, you can vote or continue to the next round!\n\n'
+                  '3. Discuss freely: Give clues and probe suspect answers. Never say your secret word!',
+                  style: TextStyle(color: muted, height: 1.5),
+                ),
+              ],
+            )),
+            _card(Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  '• Direct Voting: Host asks each player for their vote directly on screen.\n\n'
+                  '• Last chance: If a fraud is caught by majority vote (>= 50%), they get 4 word options to guess the secret word.\n\n'
+                  '• Caught Fraud guesses correctly: The fraud earns 50 points, but loses the round! All players who voted for that fraud earn +100 points.\n\n'
+                  '• Caught Fraud misses guess: The fraud earns 0 points. All players who voted for that fraud earn +100 points!\n\n'
+                  '• Fraud Escapes: If no fraud receives majority votes, frauds win the round and earn +100 points each.\n\n'
+                  '• Undercover: Earns +100 points if they vote for the fraud or survive unexposed.',
+                  style: TextStyle(color: muted, height: 1.5),
+                ),
+              ],
+            )),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _secondary('Back to main menu', () { confirmGoHome(); }),
+      ],
+    );
+  }
 
   Widget _pass() {
     final name = players[passOrder[passIdx]];
@@ -2008,9 +2200,35 @@ class _GamePageState extends State<GamePage> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         passTopBar(),
-        const SizedBox(height: 10),
-        _card(
-          Column(
+        const SizedBox(height: 6),
+        // Matching Category Indicator at top identical to reveal
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: card2,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: border),
+            ),
+            child: Text(
+              'Category: $roundCat',
+              style: const TextStyle(color: yellow, fontSize: 14, fontWeight: FontWeight.w800),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 390),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          decoration: BoxDecoration(
+            color: card,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: border, width: 1.5),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Mystery badge
@@ -2043,10 +2261,10 @@ class _GamePageState extends State<GamePage> {
               ),
               const SizedBox(height: 6),
               _mutedText('No peeking! Only the person holding the phone should look.'),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
                 decoration: BoxDecoration(
                   color: card2,
                   borderRadius: BorderRadius.circular(16),
@@ -2182,8 +2400,8 @@ class _GamePageState extends State<GamePage> {
   Widget _revealCardBack(int playerIdx) {
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 380),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+      constraints: const BoxConstraints(minHeight: 390),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -2284,7 +2502,8 @@ class _GamePageState extends State<GamePage> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 26),
+      constraints: const BoxConstraints(minHeight: 390),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -2501,6 +2720,19 @@ class _GamePageState extends State<GamePage> {
             ),
           ),
         ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          decoration: BoxDecoration(
+            color: yellow.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: yellow.withValues(alpha: 0.4)),
+          ),
+          child: Text(
+            'Round ${(safeTurn ~/ totalQuestions) + 1} • Question ${(safeTurn % totalQuestions) + 1} of $totalQuestions',
+            style: const TextStyle(color: yellow, fontSize: 13, fontWeight: FontWeight.w800),
+          ),
+        ),
         const SizedBox(height: 10),
 
         // Light box background behind instruction text to prevent background blending
@@ -2623,42 +2855,6 @@ class _GamePageState extends State<GamePage> {
   }
 
   Widget _vote() {
-    if (!voteRevealed) {
-      final voter = players[voteIdx];
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          passTopBar(),
-          _card(Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Text('Pass the phone',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 8),
-              _mutedText('No peeking! Only the person voting should look.'),
-              const SizedBox(height: 16),
-              Text(voter,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 8),
-              Text('Vote ${voteIdx + 1} of ${players.length}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: muted, fontSize: 16, fontWeight: FontWeight.w700)),
-            ],
-          )),
-          _primary('Tap to vote', () {
-            Sound.guess();
-            setState(() {
-              voteRevealed = true;
-              votePick = null;
-              votePicks = {};
-            });
-          }),
-        ],
-      );
-    }
     final voter = players[voteIdx];
     final others = List.generate(players.length, (i) => i)
         .where((i) => i != voteIdx)
@@ -2669,36 +2865,77 @@ class _GamePageState extends State<GamePage> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         passTopBar(),
-        _title(isMulti ? 'Select 2 suspects' : 'Who is the fraud?'),
+        const SizedBox(height: 6),
+        // Prominent Voter Header Card
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
             color: card2,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: yellow.withValues(alpha: 0.5)),
+            border: Border.all(color: yellow, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: yellow.withValues(alpha: 0.15),
+                blurRadius: 16,
+                spreadRadius: 2,
+              ),
+            ],
           ),
-          child: Text(
-            'Voter: $voter',
-            style: const TextStyle(
-              color: yellow,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: yellow.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  'VOTING NOW',
+                  style: TextStyle(
+                    color: yellow,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Voter: $voter',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: ink,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: card,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: border),
+                ),
+                child: Text(
+                  isMulti
+                      ? 'Vote ${voteIdx + 1} of ${players.length} • Pick 2 (${votePicks.length}/2)'
+                      : 'Vote ${voteIdx + 1} of ${players.length}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: yellow,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          isMulti
-              ? 'Vote ${voteIdx + 1} of ${players.length} • Pick 2 (${votePicks.length}/2)'
-              : 'Vote ${voteIdx + 1} of ${players.length}',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: muted,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
+        _title(isMulti ? 'Select 2 suspects' : 'Who is the fraud?'),
+        const SizedBox(height: 14),
         ...others.map((i) {
           final selected = isMulti ? votePicks.contains(i) : votePick == i;
           return Padding(
@@ -2874,7 +3111,7 @@ class _GamePageState extends State<GamePage> {
         // a. Victory/Defeat Hero Banner (No emojis, capitalized & golden)
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
             color: card2,
             borderRadius: BorderRadius.circular(20),
@@ -2898,7 +3135,7 @@ class _GamePageState extends State<GamePage> {
         // b. Polished Summary Section with Visual Depth & Dimensional Card Styling
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
@@ -3086,18 +3323,41 @@ class _GamePageState extends State<GamePage> {
         ),
         const SizedBox(height: 16),
 
-        // d. Continue Button: Preserves cumulative scores and prompts back to category selection
-        _primary('Continue', () {
-          Sound.tap();
-          chosenCat = null;
-          go(Screen.category);
-        }),
-        const SizedBox(height: 8),
-        _secondary('Return to main menu', () {
-          Sound.vote();
-          timer?.cancel();
-          go(Screen.home);
-        }),
+        // d. Compact action buttons directly visible on mobile screens
+        SizedBox(
+          width: double.infinity,
+          height: 46,
+          child: ElevatedButton(
+            onPressed: () {
+              Sound.tap();
+              chosenCat = null;
+              go(Screen.category);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: yellow,
+              foregroundColor: const Color(0xFF1A1400),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Continue', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          ),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: OutlinedButton(
+            onPressed: () {
+              Sound.vote();
+              confirmGoHome();
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: ink,
+              side: const BorderSide(color: border),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Return to main menu', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+          ),
+        ),
       ],
     );
   }

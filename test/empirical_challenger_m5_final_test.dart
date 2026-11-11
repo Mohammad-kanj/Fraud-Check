@@ -240,7 +240,10 @@ void main() {
 
       // All 3 non-frauds vote for fraud; fraud votes for someone else
       for (int v = 0; v < 4; v++) {
-        await tester.tap(find.text('Tap to vote'));
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Tap to vote'));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
         await tester.pump(const Duration(milliseconds: 100));
         if (v == fraudIdx) {
           final target = (fraudIdx + 1) % 4;
@@ -308,7 +311,10 @@ void main() {
       final String roundWord = (state.roundWord as String);
 
       for (int v = 0; v < 4; v++) {
-        await tester.tap(find.text('Tap to vote'));
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Tap to vote'));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
         await tester.pump(const Duration(milliseconds: 100));
         if (v == fraudIdx) {
           final target = (fraudIdx + 1) % 4;
@@ -371,7 +377,10 @@ void main() {
       final String word1 = (state.roundWord as String);
 
       for (int v = 0; v < 4; v++) {
-        await tester.tap(find.text('Tap to vote'));
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Tap to vote'));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
         await tester.pump(const Duration(milliseconds: 100));
         if (v == fraud1) {
           await tester.tap(find.text(players[(fraud1 + 1) % 4]));
@@ -415,7 +424,10 @@ void main() {
 
       // Everyone votes for safeTarget
       for (int v = 0; v < 4; v++) {
-        await tester.tap(find.text('Tap to vote'));
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Tap to vote'));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
         await tester.pump(const Duration(milliseconds: 100));
         final target = (v == safeTarget) ? ((safeTarget + 1) % 4) : safeTarget;
         await tester.tap(find.text(players[target]));

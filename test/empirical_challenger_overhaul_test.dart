@@ -251,6 +251,10 @@ void main() {
       // Tap through the overlay
       await tester.tap(backBtn);
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       // Verify navigation occurred successfully to Screen.home
       expect(find.text('FRAUD CHECK'), findsOneWidget,

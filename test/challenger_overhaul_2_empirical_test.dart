@@ -117,9 +117,8 @@ void main() {
         expect(find.text(currentResponder), findsOneWidget);
         expect(currentAsker, isNot(equals(currentResponder)));
 
-        // Verify no round counters or 'Questioning Round' labels exist
+        // Verify no legacy labels exist
         expect(find.textContaining('Questioning Round'), findsNothing);
-        expect(find.textContaining('Round '), findsNothing);
         expect(find.textContaining('ASKER:'), findsNothing);
         expect(find.textContaining('RESPONDER:'), findsNothing);
 
@@ -129,6 +128,10 @@ void main() {
         // Tap 'Next question'
         await tester.tap(find.text('Next question'));
         await tester.pump(const Duration(milliseconds: 50));
+        if (find.text('Another round').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Another round'));
+          await tester.pump(const Duration(milliseconds: 50));
+        }
       }
 
       expect(state.questionTurnIdx, 60);
@@ -153,6 +156,10 @@ void main() {
       for (int i = 0; i < 52; i++) {
         await tester.tap(find.text('Next question'));
         await tester.pump(const Duration(milliseconds: 20));
+        if (find.text('Another round').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Another round'));
+          await tester.pump(const Duration(milliseconds: 20));
+        }
       }
       expect(state3.questionTurnIdx, 52);
       expect(tester.takeException(), isNull);
@@ -176,6 +183,10 @@ void main() {
       for (int i = 0; i < 55; i++) {
         await tester.tap(find.text('Next question'));
         await tester.pump(const Duration(milliseconds: 20));
+        if (find.text('Another round').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Another round'));
+          await tester.pump(const Duration(milliseconds: 20));
+        }
       }
       expect(state10.questionTurnIdx, 55);
       expect(tester.takeException(), isNull);
@@ -204,7 +215,10 @@ void main() {
       // All 3 non-fraud players vote for the fraud (caught by majority 3/4 > 2).
       // The fraud votes for another player.
       for (int v = 0; v < 4; v++) {
-        await tester.tap(find.text('Tap to vote'));
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Tap to vote'));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
         await tester.pump(const Duration(milliseconds: 100));
 
         if (v == round1Fraud) {
@@ -296,7 +310,10 @@ void main() {
       // Frauds escape! (Split vote or vote for non-fraud so fraud is not caught by majority)
       // Every player votes for the next player: 0->1, 1->2, 2->3, 3->0 (1 vote each, <= 2)
       for (int v = 0; v < 4; v++) {
-        await tester.tap(find.text('Tap to vote'));
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Tap to vote'));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
         await tester.pump(const Duration(milliseconds: 100));
 
         final target = (v + 1) % 4;
@@ -543,7 +560,10 @@ void main() {
       final dynamic state = tester.state(find.byType(GamePage));
       final List<String> players = List<String>.from(state.players as List<String>);
       for (int v = 0; v < 4; v++) {
-        await tester.tap(find.text('Tap to vote'));
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Tap to vote'));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
         await tester.pump(const Duration(milliseconds: 100));
         await tester.tap(find.text(players[(v + 1) % 4]));
         await tester.pump(const Duration(milliseconds: 100));

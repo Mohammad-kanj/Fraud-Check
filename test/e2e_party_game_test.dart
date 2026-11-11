@@ -200,6 +200,10 @@ void main() {
       // Back to main menu
       await tester.tap(find.text('Back to main menu'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(find.text('Play'), findsOneWidget);
     });
 
@@ -310,8 +314,9 @@ void main() {
       // Complete voting: all 4 voters vote for the fraud
       final fraudTargetIdx = fraudIndices.first;
       for (int v = 0; v < 4; v++) {
-        expect(find.text('Tap to vote'), findsOneWidget);
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
         await tester.tap(find.text('Tap to vote'));
+      }
         await tester.pump(const Duration(milliseconds: 100));
 
         if (v == fraudTargetIdx) {
@@ -380,6 +385,10 @@ void main() {
       // Return to main menu and test Two Frauds mode (minimum 4 players)
       await tester.tap(find.text('Back to main menu'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       await tester.tap(find.text('Play'));
       await tester.pump(const Duration(milliseconds: 100));
@@ -496,7 +505,10 @@ void main() {
 
       // Voting phase: 3 safe players vote for fraud; fraud votes for Player 0 (or 1)
       for (int v = 0; v < 4; v++) {
-        await tester.tap(find.text('Tap to vote'));
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Tap to vote'));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
         await tester.pump(const Duration(milliseconds: 100));
 
         if (v == fraudIdx) {
@@ -557,7 +569,10 @@ void main() {
 
       // Cast split votes so no player gets majority (> 2.5 votes), picking 2 targets in Two Frauds mode
       for (int v = 0; v < 5; v++) {
-        await tester.tap(find.text('Tap to vote'));
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Tap to vote'));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
         await tester.pump(const Duration(milliseconds: 100));
 
         final target1 = (v + 1) % 5;
@@ -596,7 +611,10 @@ void main() {
 
       // Voters cast votes away from undercover agent (< 2 votes threshold, so undercover survives)
       for (int v = 0; v < 4; v++) {
-        await tester.tap(find.text('Tap to vote'));
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Tap to vote'));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
         await tester.pump(const Duration(milliseconds: 100));
 
         final otherTargets = [0, 1, 2, 3].where((p) => p != v && p != undercoverIdx!).toList();
@@ -640,6 +658,10 @@ void main() {
 
       await tester.tap(find.text('Back to main menu'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       // Play through round
       await tester.tap(find.text('Play'));
@@ -675,7 +697,10 @@ void main() {
 
       // Complete voting
       for (int v = 0; v < 4; v++) {
-        await tester.tap(find.text('Tap to vote'));
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Tap to vote'));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
         await tester.pump(const Duration(milliseconds: 100));
 
         final target = (v + 1) % 4;

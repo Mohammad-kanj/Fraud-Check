@@ -293,6 +293,10 @@ void main() {
           await tester.ensureVisible(nextFinder);
           await tester.tap(nextFinder);
           await tester.pump(const Duration(milliseconds: 10));
+          if (find.text('Another round').evaluate().isNotEmpty) {
+            await tester.tap(find.text('Another round'));
+            await tester.pump(const Duration(milliseconds: 10));
+          }
         }
       }
       await tester.pump(const Duration(milliseconds: 100));
@@ -379,10 +383,12 @@ void main() {
         final Set<int> fraudIndices = (state.fraudIndices as Set<int>);
         final targetFraud = fraudIndices.first;
         for (int v = 0; v < 4; v++) {
-          final tapVoteBtn = find.text('Tap to vote');
-          await tester.ensureVisible(tapVoteBtn);
-          await tester.tap(tapVoteBtn);
-          await tester.pump(const Duration(milliseconds: 50));
+          if (find.text('Tap to vote').evaluate().isNotEmpty) {
+            final tapVoteBtn = find.text('Tap to vote');
+            await tester.ensureVisible(tapVoteBtn);
+            await tester.tap(tapVoteBtn);
+            await tester.pump(const Duration(milliseconds: 50));
+          }
 
           if (v == targetFraud) {
             final alt = (targetFraud + 1) % 4;

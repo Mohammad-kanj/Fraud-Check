@@ -467,6 +467,8 @@ void main() {
 
       expect(find.text('Rules'), findsOneWidget);
       expect(find.text('Voting & Scoring'), findsOneWidget);
+      await tester.tap(find.text('Voting & Scoring'));
+      await tester.pump(const Duration(milliseconds: 100));
 
       // Verify Card 4 text matches requirements:
       expect(

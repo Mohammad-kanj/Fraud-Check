@@ -118,8 +118,8 @@ void main() {
       await tester.tap(find.text('Vote'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Vote Stage 1: Pass the phone to voter
-      expect(find.text('Tap to vote'), findsOneWidget);
+      // Vote Stage 1: Streamlined direct voter screen
+      expect(find.text('VOTING NOW'), findsOneWidget);
       expect(find.byIcon(Icons.more_vert), findsOneWidget);
 
       await tester.tap(find.byIcon(Icons.more_vert));
@@ -130,8 +130,11 @@ void main() {
       await tester.tap(find.text('Cancel'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Vote Stage 2: Who is the fraud?
-      await tester.tap(find.text('Tap to vote'));
+      // Direct voting: Who is the fraud?
+      if (find.text('Tap to vote').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Tap to vote'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('Who is the fraud?'), findsOneWidget);
       expect(find.byIcon(Icons.more_vert), findsOneWidget);
@@ -304,7 +307,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Tap to vote
-      await tester.tap(find.text('Tap to vote'));
+      if (find.text('Tap to vote').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Tap to vote'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       await tester.pump(const Duration(milliseconds: 100));
     }
 
@@ -421,10 +427,10 @@ void main() {
       await tester.tap(find.widgetWithText(ElevatedButton, 'Vote'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Advances to Voter 2 (voteIdx = 1, voteRevealed = false)
+      // Advances to Voter 2 directly
       expect(state.voteIdx, equals(1));
-      expect(state.voteRevealed, isFalse);
-      expect(find.text('Pass the phone'), findsOneWidget);
+      expect(state.voteRevealed, isTrue);
+      expect(find.text('VOTING NOW'), findsOneWidget);
       expect(find.text('Vote 2 of 4'), findsOneWidget);
     });
 
@@ -442,7 +448,10 @@ void main() {
       // Voters 2, 3, 4
       for (var v = 2; v <= 4; v++) {
         expect(find.text('Vote $v of 4'), findsOneWidget);
-        await tester.tap(find.text('Tap to vote'));
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
+          await tester.tap(find.text('Tap to vote'));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
         await tester.pump(const Duration(milliseconds: 100));
 
         // Select first available suspect

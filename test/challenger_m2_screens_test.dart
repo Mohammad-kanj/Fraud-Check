@@ -90,6 +90,10 @@ void main() {
       // Return to main menu
       await tester.tap(find.text('Back to main menu'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       // 5. Test Rules navigation
       await tester.tap(find.text('Rules'));
@@ -368,6 +372,10 @@ void main() {
       // 2. Return to main menu
       await tester.tap(find.text('Back to main menu'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(find.text('FRAUD CHECK'), findsOneWidget);
       expect(state.chosenCat, isNull);
 
@@ -646,6 +654,10 @@ void main() {
 
       await tester.tap(find.text('Return to main menu'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       expect(find.text('Play'), findsOneWidget);
       expect(find.text('WHO IS THE FRAUD?'), findsOneWidget);

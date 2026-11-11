@@ -525,10 +525,12 @@ void main() {
       final targetFraud = fraudIndices.first;
 
       for (int v = 0; v < playerCount; v++) {
-        final tapVoteBtn = find.text('Tap to vote');
-        await tester.ensureVisible(tapVoteBtn);
-        await tester.tap(tapVoteBtn);
-        await tester.pump(const Duration(milliseconds: 50));
+        if (find.text('Tap to vote').evaluate().isNotEmpty) {
+          final tapVoteBtn = find.text('Tap to vote');
+          await tester.ensureVisible(tapVoteBtn);
+          await tester.tap(tapVoteBtn);
+          await tester.pump(const Duration(milliseconds: 50));
+        }
 
         if (v == targetFraud) {
           final alt = (targetFraud + 1) % playerCount;

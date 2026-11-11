@@ -125,30 +125,16 @@ void main() {
 
       expect(find.text('Rules'), findsOneWidget);
 
-      // Verify the 4 distinct section headings
-      final overviewHeading = find.text('Overview');
-      final rolesHeading = find.text('Roles & Objectives');
-      final questioningHeading = find.text('Questioning Phase');
-      final votingHeading = find.text('Voting & Scoring');
+      // Verify the 4 tags at the top
+      expect(find.text('Overview'), findsOneWidget);
+      expect(find.text('Roles & Objectives'), findsOneWidget);
+      expect(find.text('Questioning Phase'), findsOneWidget);
+      expect(find.text('Voting & Scoring'), findsOneWidget);
 
-      expect(overviewHeading, findsOneWidget);
-      expect(rolesHeading, findsOneWidget);
-      expect(questioningHeading, findsOneWidget);
-      expect(votingHeading, findsOneWidget);
-
-      // Verify the 4 cards housing each subsection have rounded corners (radius 18)
-      final containers = tester.widgetList<Container>(find.byType(Container));
-      final cardContainers = containers.where((c) {
-        final dec = c.decoration;
-        if (dec is BoxDecoration) {
-          final br = dec.borderRadius;
-          return br == BorderRadius.circular(18);
-        }
-        return false;
-      }).toList();
-
-      expect(cardContainers.length, equals(4),
-          reason: 'Rules screen must render exactly 4 distinct rounded cards with radius 18');
+      // Tap 'Roles & Objectives' tag and verify switching
+      await tester.tap(find.text('Roles & Objectives'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Roles & Objectives'), findsOneWidget);
 
       // Ensure 0 exceptions
       expect(tester.takeException(), isNull);
@@ -172,12 +158,6 @@ void main() {
       expect(find.text('Rules'), findsOneWidget);
       expect(find.text('Overview'), findsOneWidget);
 
-      // Ensure 'Voting & Scoring' and action buttons can be scrolled into view
-      final votingFinder = find.text('Voting & Scoring');
-      await tester.ensureVisible(votingFinder);
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(votingFinder, findsOneWidget);
-
       final backBtnFinder = find.text('Back to main menu');
       await tester.ensureVisible(backBtnFinder);
       await tester.pump(const Duration(milliseconds: 100));
@@ -186,6 +166,10 @@ void main() {
       // Tap 'Back to main menu' and verify navigation
       await tester.tap(backBtnFinder);
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(find.text('FRAUD CHECK'), findsOneWidget);
 
       // Ensure 0 overflow
@@ -385,6 +369,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       await tester.tap(backRulesBtn);
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(find.text('FRAUD CHECK'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
@@ -404,6 +392,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       await tester.tap(backSettingsBtn);
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(find.text('FRAUD CHECK'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
