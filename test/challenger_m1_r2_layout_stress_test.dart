@@ -127,14 +127,14 @@ void main() {
 
       // Verify the 4 tags at the top
       expect(find.text('Overview'), findsOneWidget);
-      expect(find.text('Roles & Objectives'), findsOneWidget);
-      expect(find.text('Questioning Phase'), findsOneWidget);
-      expect(find.text('Voting & Scoring'), findsOneWidget);
+      expect(find.text('Roles'), findsOneWidget);
+      expect(find.text('Rounds'), findsOneWidget);
+      expect(find.text('Scoring'), findsOneWidget);
 
-      // Tap 'Roles & Objectives' tag and verify switching
-      await tester.tap(find.text('Roles & Objectives'));
+      // Tap 'Roles' tag and verify switching
+      await tester.tap(find.text('Roles'));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Roles & Objectives'), findsOneWidget);
+      expect(find.text('Roles'), findsWidgets);
 
       // Ensure 0 exceptions
       expect(tester.takeException(), isNull);

@@ -94,6 +94,12 @@ void main() {
       await tester.tap(find.text('Restart round'));
       await tester.pump(const Duration(milliseconds: 100));
 
+      // Confirm restart in dialog
+      if (find.text('Restart').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Restart'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
       // After restart, options dialog is gone and round restarted on Screen.pass
       expect(find.text('Options'), findsNothing);
       expect(find.text('Pass the phone'), findsOneWidget);
@@ -119,7 +125,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Vote Stage 1: Streamlined direct voter screen
-      expect(find.text('VOTING NOW'), findsOneWidget);
+      expect(find.textContaining('Vote 1 of'), findsOneWidget);
       expect(find.byIcon(Icons.more_vert), findsOneWidget);
 
       await tester.tap(find.byIcon(Icons.more_vert));
@@ -147,6 +153,10 @@ void main() {
       // Test Back to main menu
       await tester.tap(find.text('Back to main menu'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(find.text('Play'), findsOneWidget);
     });
   });

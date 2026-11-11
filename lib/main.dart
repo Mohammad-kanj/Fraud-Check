@@ -1184,13 +1184,26 @@ class _GamePageState extends State<GamePage> {
     if (!mounted) return;
     switch (choice) {
       case 'restart':
-        Sound.start();
-        startRound();
+        final confirmed = await _confirmAction(
+          title: 'Restart Round?',
+          message: 'This will deal fresh roles and start the round over.',
+          confirmLabel: 'Restart',
+        );
+        if (confirmed) {
+          Sound.start();
+          startRound();
+        }
       case 'players':
-        go(Screen.players);
+        final confirmed = await _confirmAction(
+          title: 'Change Players?',
+          message: 'This will abandon the current round and let you edit the player list.',
+          confirmLabel: 'Change',
+        );
+        if (confirmed) {
+          go(Screen.players);
+        }
       case 'home':
-        timer?.cancel();
-        go(Screen.home);
+        await confirmGoHome();
       default:
         break;
     }
@@ -1375,32 +1388,6 @@ class _GamePageState extends State<GamePage> {
             textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           child: Text(label, textAlign: TextAlign.center),
-        ),
-      );
-
-  Widget _primaryWithIcon(String label, IconData icon, VoidCallback? onPressed) => SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: yellow,
-            foregroundColor: const Color(0xFF1A1400),
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            elevation: 3,
-            textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-          ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 28),
-                const SizedBox(width: 8),
-                Text(label, textAlign: TextAlign.center),
-              ],
-            ),
-          ),
         ),
       );
 
@@ -1736,16 +1723,16 @@ class _GamePageState extends State<GamePage> {
           ),
           const SizedBox(height: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
               color: card2,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: border),
             ),
             child: Text(
-              '${selectedMode.minPlayers} to ${selectedMode.maxPlayers} players. Names are optional.',
+              '${selectedMode.minPlayers} to ${selectedMode.maxPlayers} players',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: ink, fontSize: 14, fontWeight: FontWeight.w600),
+              style: const TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(height: 16),
@@ -2079,62 +2066,59 @@ class _GamePageState extends State<GamePage> {
             ),
           ),
           const SizedBox(height: 10),
-          _secondary('Back to main menu', () { confirmGoHome(); }),
+          _secondary('Back to main menu', () {
+            Sound.vote();
+            go(Screen.home);
+          }),
         ],
       );
 
   Widget _rules() {
-    final tags = ['Overview', 'Roles & Objectives', 'Questioning Phase', 'Voting & Scoring'];
+    final tags = ['Overview', 'Roles', 'Rounds', 'Scoring'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         _title('Rules'),
-        _mutedText('Pass-and-play party game of deception and deduction.\n3–10 players on one device.'),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          alignment: WrapAlignment.center,
-          children: List.generate(tags.length, (idx) {
-            final active = rulesTabIdx == idx;
-            return GestureDetector(
-              onTap: () {
-                Sound.tap();
-                setState(() => rulesTabIdx = idx);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: active ? yellow : card2,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: active ? yellow : border,
-                    width: active ? 1.5 : 1.0,
-                  ),
-                  boxShadow: active
-                      ? [
-                          BoxShadow(
-                            color: yellow.withValues(alpha: 0.25),
-                            blurRadius: 10,
-                            spreadRadius: 1,
-                          )
-                        ]
-                      : null,
-                ),
-                child: Text(
-                  tags[idx],
-                  style: TextStyle(
-                    color: active ? const Color(0xFF1A1400) : muted,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: card2,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: border),
+          ),
+          child: Row(
+            children: List.generate(tags.length, (idx) {
+              final active = rulesTabIdx == idx;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    Sound.tap();
+                    setState(() => rulesTabIdx = idx);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: active ? yellow : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      tags[idx],
+                      style: TextStyle(
+                        color: active ? const Color(0xFF1A1400) : muted,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
+          ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         IndexedStack(
           index: rulesTabIdx,
           children: [
@@ -2189,7 +2173,10 @@ class _GamePageState extends State<GamePage> {
           ],
         ),
         const SizedBox(height: 12),
-        _secondary('Back to main menu', () { confirmGoHome(); }),
+        _secondary('Back to main menu', () {
+          Sound.vote();
+          go(Screen.home);
+        }),
       ],
     );
   }
@@ -2223,9 +2210,20 @@ class _GamePageState extends State<GamePage> {
           constraints: const BoxConstraints(minHeight: 390),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           decoration: BoxDecoration(
-            color: card,
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1E2448), Color(0xFF0F1326)],
+            ),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: border, width: 1.5),
+            border: Border.all(color: yellow.withValues(alpha: 0.6), width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: yellow.withValues(alpha: 0.18),
+                blurRadius: 24,
+                spreadRadius: 1,
+              ),
+            ],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -2238,12 +2236,12 @@ class _GamePageState extends State<GamePage> {
                 decoration: BoxDecoration(
                   color: card2,
                   shape: BoxShape.circle,
-                  border: Border.all(color: yellow.withValues(alpha: 0.5), width: 2),
+                  border: Border.all(color: yellow.withValues(alpha: 0.7), width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: yellow.withValues(alpha: 0.2),
+                      color: yellow.withValues(alpha: 0.3),
                       blurRadius: 16,
-                      spreadRadius: 2,
+                      spreadRadius: 1,
                     ),
                   ],
                 ),
@@ -2276,7 +2274,7 @@ class _GamePageState extends State<GamePage> {
                       name,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 32,
+                        fontSize: 30,
                         fontWeight: FontWeight.w900,
                         color: ink,
                         letterSpacing: 0.5,
@@ -2306,7 +2304,7 @@ class _GamePageState extends State<GamePage> {
           ),
         ),
         const SizedBox(height: 16),
-        _primaryWithIcon('Tap to reveal', Icons.visibility_rounded, showReveal),
+        _primary('Tap to reveal', showReveal),
       ],
     );
   }
@@ -2408,13 +2406,13 @@ class _GamePageState extends State<GamePage> {
           end: Alignment.bottomRight,
           colors: [Color(0xFF1E2448), Color(0xFF0F1326)],
         ),
-        border: Border.all(color: yellow.withValues(alpha: 0.7), width: 2.5),
+        border: Border.all(color: yellow.withValues(alpha: 0.6), width: 2),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: yellow.withValues(alpha: 0.3),
-            blurRadius: 32,
-            spreadRadius: 2,
+            color: yellow.withValues(alpha: 0.18),
+            blurRadius: 24,
+            spreadRadius: 1,
           ),
         ],
       ),
@@ -2428,7 +2426,7 @@ class _GamePageState extends State<GamePage> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: card2,
-              border: Border.all(color: yellow.withValues(alpha: 0.8), width: 2.5),
+              border: Border.all(color: yellow.withValues(alpha: 0.8), width: 2),
               boxShadow: [
                 BoxShadow(
                   color: yellow.withValues(alpha: 0.4),
@@ -2514,13 +2512,14 @@ class _GamePageState extends State<GamePage> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: yellow.withValues(alpha: 0.15),
+            color: yellow.withValues(alpha: 0.18),
             blurRadius: 24,
             spreadRadius: 1,
           ),
         ],
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           if (isFraud) ...[

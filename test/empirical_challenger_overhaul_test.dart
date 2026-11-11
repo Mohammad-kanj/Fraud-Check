@@ -365,8 +365,8 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
 
         expect(find.text('Rules'), findsOneWidget);
-        expect(find.text('Overview'), findsOneWidget);
-        expect(find.text('Roles & Objectives'), findsOneWidget);
+        expect(find.text('Overview'), findsWidgets);
+        expect(find.text('Roles'), findsWidgets);
         expect(tester.takeException(), isNull);
       });
 

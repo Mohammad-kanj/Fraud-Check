@@ -98,7 +98,7 @@ void main() {
       // 5. Test Rules navigation
       await tester.tap(find.text('Rules'));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Roles & Objectives'), findsOneWidget);
+      expect(find.text('Roles'), findsWidgets);
     });
 
     testWidgets('MM.3: Arcade tagline badge "WHO IS THE FRAUD?" renders with rounded gold pill styling',

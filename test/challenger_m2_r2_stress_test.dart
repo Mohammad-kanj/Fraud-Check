@@ -539,6 +539,10 @@ void main() {
       // Tap Restart round
       await tester.tap(find.text('Restart round'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Restart').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Restart'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       // Lands on Screen.pass for player 0
       expect(state.screen.toString(), contains('pass'));
@@ -565,6 +569,10 @@ void main() {
       // Tap Change players
       await tester.tap(find.text('Change players'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Change').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Change'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       // Lands on Screen.players
       expect(state.screen.toString(), contains('players'));
@@ -590,6 +598,10 @@ void main() {
       // Tap Back to main menu
       await tester.tap(find.text('Back to main menu'));
       await tester.pump(const Duration(milliseconds: 100));
+      if (find.text('Confirm').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Confirm'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       // Lands on Screen.home
       expect(state.screen.toString(), contains('home'));

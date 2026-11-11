@@ -246,7 +246,10 @@ void main() {
       // Tap 'Change players'
       await tester.tap(find.text('Change players'));
       await tester.pump(const Duration(milliseconds: 100));
-      if (find.text('Confirm').evaluate().isNotEmpty) {
+      if (find.text('Change').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Change'));
+        await tester.pump(const Duration(milliseconds: 100));
+      } else if (find.text('Confirm').evaluate().isNotEmpty) {
         await tester.tap(find.text('Confirm'));
         await tester.pump(const Duration(milliseconds: 100));
       }

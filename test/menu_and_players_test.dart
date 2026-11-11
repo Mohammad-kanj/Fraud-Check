@@ -43,8 +43,8 @@ void main() {
 
       // Rules screen title & subsections
       expect(find.widgetWithText(Column, 'Rules'), findsWidgets);
-      expect(find.text('Overview'), findsOneWidget);
-      expect(find.text('Roles & Objectives'), findsOneWidget);
+      expect(find.text('Overview'), findsWidgets);
+      expect(find.text('Roles'), findsWidgets);
       expect(find.text('How to Play'), findsNothing);
 
       // Back to main menu

@@ -104,10 +104,10 @@ void main() {
       await tester.tap(find.text('Rules'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Overview'), findsOneWidget);
-      expect(find.text('Roles & Objectives'), findsOneWidget);
-      expect(find.text('Questioning Phase'), findsOneWidget);
-      expect(find.text('Voting & Scoring'), findsOneWidget);
+      expect(find.text('Overview'), findsWidgets);
+      expect(find.text('Roles'), findsWidgets);
+      expect(find.text('Rounds'), findsWidgets);
+      expect(find.text('Scoring'), findsWidgets);
 
       // Negative emoji check in rules
       expect(find.textContaining('🎭'), findsNothing);

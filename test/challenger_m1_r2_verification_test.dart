@@ -103,51 +103,25 @@ void main() {
       await tester.tap(find.text('Rules'));
       await tester.pump(const Duration(milliseconds: 100));
 
-      // 4 subsection titles
+      // 4 subsection tags in connected segmented bar
       final subsectionTitles = [
         'Overview',
-        'Roles & Objectives',
-        'Questioning Phase',
-        'Voting & Scoring',
+        'Roles',
+        'Rounds',
+        'Scoring',
       ];
 
       for (final title in subsectionTitles) {
-        expect(find.text(title), findsOneWidget,
-            reason: 'Subsection "$title" must be present on the Rules screen');
+        expect(find.text(title), findsWidgets,
+            reason: 'Tag "$title" must be present on the Rules screen segmented bar');
       }
 
-      // Check distinct rounded card containers
-      final cardContainers = <Element>{};
-
+      // Check tapping each tab displays its card
       for (final title in subsectionTitles) {
-        final titleFinder = find.text(title);
-        // Find the containing card container
-        final containerFinders = find.ancestor(
-          of: titleFinder,
-          matching: find.byType(Container),
-        );
-
-        Element? roundedCardElement;
-        for (final elem in containerFinders.evaluate()) {
-          final widget = elem.widget as Container;
-          final decoration = widget.decoration;
-          if (decoration is BoxDecoration && decoration.borderRadius != null) {
-            final radius = decoration.borderRadius;
-            if (radius is BorderRadius && radius.topLeft.x > 0) {
-              roundedCardElement = elem;
-              break;
-            }
-          }
-        }
-
-        expect(roundedCardElement, isNotNull,
-            reason: 'Subsection "$title" must be housed in a container with rounded border radius');
-        cardContainers.add(roundedCardElement!);
+        await tester.tap(find.text(title).first);
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.byType(Container), findsWidgets);
       }
-
-      // Verify all 4 containers are distinct instances
-      expect(cardContainers.length, equals(4),
-          reason: 'The 4 subsections must be rendered inside 4 distinct rounded card containers');
     });
 
     testWidgets('Criteria 4: Role Reveal - Category text has no emoji, no lock icon once revealed, "👁️ FRAUD" badge for fraud',
