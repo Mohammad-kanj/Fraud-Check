@@ -546,5 +546,19 @@ void main() {
       final voterNameTop = tester.getTopLeft(find.textContaining('Voter:')).dy;
       expect(votePillTop, lessThan(voterNameTop));
     });
+
+    testWidgets('ConfettiOverlay renders from top when reaching Screen.result',
+        (WidgetTester tester) async {
+      await setupVotingScreen(tester);
+      final dynamic state = tester.state(find.byType(GamePage));
+
+      // Transition to results screen
+      state.setState(() {
+        state.screen = Screen.result;
+      });
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.byType(ConfettiOverlay), findsOneWidget);
+    });
   });
 }

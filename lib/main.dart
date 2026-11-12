@@ -1332,6 +1332,12 @@ class _GamePageState extends State<GamePage> {
               ),
             ),
           ),
+          if (screen == Screen.result)
+            const Positioned.fill(
+              child: IgnorePointer(
+                child: ConfettiOverlay(),
+              ),
+            ),
           // In-app visual overlay brightness control (dimming/brightening cleanly without device permissions)
           if (brightness < 1.0)
             Positioned.fill(
@@ -3470,4 +3476,160 @@ class _CategoryCardState extends State<_CategoryCard> {
       ),
     );
   }
+}
+
+// ---------- Confetti Overlay for End of Game / Results ----------
+
+class ConfettiOverlay extends StatefulWidget {
+  const ConfettiOverlay({super.key});
+
+  @override
+  State<ConfettiOverlay> createState() => _ConfettiOverlayState();
+}
+
+class _ConfettiOverlayState extends State<ConfettiOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final List<_ConfettiParticle> _particles;
+
+  static const _confettiColors = [
+    Color(0xFFFFC837), // yellow/gold
+    Color(0xFF00E5A3), // green
+    Color(0xFFFF3B5C), // red/pink
+    Color(0xFF3A86FF), // blue
+    Color(0xFF8B5CF6), // purple
+    Color(0xFFF43F5E), // rose
+    Color(0xFF06B6D4), // cyan
+    Color(0xFFFFFFFF), // white sparkle
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final rng = Random();
+    _particles = List.generate(42, (index) {
+      return _ConfettiParticle(
+        x: rng.nextDouble(),
+        delay: rng.nextDouble() * 0.3,
+        speed: 0.6 + rng.nextDouble() * 0.5,
+        wobbleSpeed: 2.0 + rng.nextDouble() * 3.0,
+        wobbleAmp: 14.0 + rng.nextDouble() * 18.0,
+        rotationSpeed: (rng.nextBool() ? 1 : -1) * (2.0 + rng.nextDouble() * 4.0),
+        width: 5.0 + rng.nextDouble() * 4.0,
+        height: 9.0 + rng.nextDouble() * 5.0,
+        color: _confettiColors[rng.nextInt(_confettiColors.length)],
+        isCircle: rng.nextDouble() < 0.25,
+      );
+    });
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3200),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        if (_controller.value >= 1.0) {
+          return const SizedBox.shrink();
+        }
+        return CustomPaint(
+          painter: _ConfettiPainter(
+            progress: _controller.value,
+            particles: _particles,
+          ),
+          size: Size.infinite,
+        );
+      },
+    );
+  }
+}
+
+class _ConfettiParticle {
+  final double x;
+  final double delay;
+  final double speed;
+  final double wobbleSpeed;
+  final double wobbleAmp;
+  final double rotationSpeed;
+  final double width;
+  final double height;
+  final Color color;
+  final bool isCircle;
+
+  const _ConfettiParticle({
+    required this.x,
+    required this.delay,
+    required this.speed,
+    required this.wobbleSpeed,
+    required this.wobbleAmp,
+    required this.rotationSpeed,
+    required this.width,
+    required this.height,
+    required this.color,
+    required this.isCircle,
+  });
+}
+
+class _ConfettiPainter extends CustomPainter {
+  final double progress;
+  final List<_ConfettiParticle> particles;
+
+  _ConfettiPainter({required this.progress, required this.particles});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final p in particles) {
+      if (progress < p.delay) continue;
+      final t = (progress - p.delay) / (1.0 - p.delay);
+      if (t <= 0 || t >= 1.0) continue;
+
+      // Vertical position: starts above top (-20) and falls past bottom
+      final y = -20.0 + (size.height + 60.0) * (t * p.speed);
+      if (y > size.height + 30.0) continue;
+
+      // Horizontal sway (flutter)
+      final x = p.x * size.width + sin(t * pi * 2 * p.wobbleSpeed) * p.wobbleAmp;
+
+      // Rotation & 3D flutter scaling
+      final angle = t * pi * 2 * p.rotationSpeed;
+      final flip = cos(t * pi * 2 * (p.wobbleSpeed * 1.5));
+
+      // Gentle fade out at the very end
+      final opacity = t > 0.85 ? ((1.0 - t) / 0.15).clamp(0.0, 1.0) : 1.0;
+      final paint = Paint()
+        ..color = p.color.withValues(alpha: opacity)
+        ..style = PaintingStyle.fill;
+
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(angle);
+      canvas.scale(1.0, flip.abs().clamp(0.15, 1.0));
+
+      if (p.isCircle) {
+        canvas.drawCircle(Offset.zero, p.width / 2, paint);
+      } else {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset.zero, width: p.width, height: p.height),
+            const Radius.circular(2),
+          ),
+          paint,
+        );
+      }
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ConfettiPainter oldDelegate) => oldDelegate.progress != progress;
 }
