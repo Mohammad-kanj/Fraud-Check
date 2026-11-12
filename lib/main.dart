@@ -3507,14 +3507,14 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
   void initState() {
     super.initState();
     final rng = Random();
-    _particles = List.generate(42, (index) {
+    _particles = List.generate(36, (index) {
       return _ConfettiParticle(
         x: rng.nextDouble(),
-        delay: rng.nextDouble() * 0.3,
-        speed: 0.6 + rng.nextDouble() * 0.5,
-        wobbleSpeed: 2.0 + rng.nextDouble() * 3.0,
-        wobbleAmp: 14.0 + rng.nextDouble() * 18.0,
-        rotationSpeed: (rng.nextBool() ? 1 : -1) * (2.0 + rng.nextDouble() * 4.0),
+        delay: rng.nextDouble() * 0.15,
+        speed: 0.75 + rng.nextDouble() * 0.45,
+        wobbleSpeed: 2.5 + rng.nextDouble() * 2.5,
+        wobbleAmp: 12.0 + rng.nextDouble() * 16.0,
+        rotationSpeed: (rng.nextBool() ? 1 : -1) * (2.5 + rng.nextDouble() * 3.5),
         width: 5.0 + rng.nextDouble() * 4.0,
         height: 9.0 + rng.nextDouble() * 5.0,
         color: _confettiColors[rng.nextInt(_confettiColors.length)],
@@ -3524,7 +3524,7 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3200),
+      duration: const Duration(milliseconds: 1800),
     )..forward();
   }
 
@@ -3604,8 +3604,8 @@ class _ConfettiPainter extends CustomPainter {
       final angle = t * pi * 2 * p.rotationSpeed;
       final flip = cos(t * pi * 2 * (p.wobbleSpeed * 1.5));
 
-      // Gentle fade out at the very end
-      final opacity = t > 0.85 ? ((1.0 - t) / 0.15).clamp(0.0, 1.0) : 1.0;
+      // Gentle fade out towards the end
+      final opacity = t > 0.75 ? ((1.0 - t) / 0.25).clamp(0.0, 1.0) : 1.0;
       final paint = Paint()
         ..color = p.color.withValues(alpha: opacity)
         ..style = PaintingStyle.fill;
