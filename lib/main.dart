@@ -17,7 +17,6 @@ import 'categories.dart';
 const bg = Color(0xFF0A0D1B);
 const card = Color(0xFF151932);
 const card2 = Color(0xFF1E2448);
-const cardHi = card2;
 const border = Color(0xFF2C3466);
 const yellow = Color(0xFFFFC837);
 const red = Color(0xFFFF3B5C);
@@ -100,7 +99,8 @@ const List<GameMode> availableGameModes = [
 class Sound {
   static bool enabled = true;
   static double volume = 0.8;
-  static final AudioPlayer _player = AudioPlayer()..setPlayerMode(PlayerMode.lowLatency);
+  static final AudioPlayer _player = AudioPlayer()
+    ..setPlayerMode(PlayerMode.lowLatency);
 
   static Future<void> setVolume(double val) async {
     volume = val.clamp(0.0, 1.0);
@@ -299,7 +299,8 @@ class FilmStripPainter extends CustomPainter {
       );
 
       // 2. Sprocket perforations on top and bottom rails
-      final double sprocketStart = -diagonal - (sprocketOffset % sprocketSpacing);
+      final double sprocketStart =
+          -diagonal - (sprocketOffset % sprocketSpacing);
       for (double x = sprocketStart; x <= diagonal; x += sprocketSpacing) {
         // Top sprocket
         canvas.drawRRect(
@@ -355,175 +356,6 @@ class FilmStripPainter extends CustomPainter {
   @override
   bool shouldRepaint(FilmStripPainter oldDelegate) =>
       oldDelegate.progress != progress;
-}
-
-// ---------- Category Abstract Themes & Backdrop Painter ----------
-class CategoryTheme {
-  final List<Color> gradient;
-  final Color accent;
-  final Color iconBg;
-
-  const CategoryTheme({
-    required this.gradient,
-    required this.accent,
-    required this.iconBg,
-  });
-}
-
-const Map<String, CategoryTheme> categoryThemes = {
-  "Movies": CategoryTheme(
-    gradient: [Color(0xFF2E1338), Color(0xFF16091F)],
-    accent: Color(0xFFE040FB),
-    iconBg: Color(0xFF481C5C),
-  ),
-  "TV Shows": CategoryTheme(
-    gradient: [Color(0xFF0F2648), Color(0xFF08152B)],
-    accent: Color(0xFF00E5FF),
-    iconBg: Color(0xFF163E75),
-  ),
-  "Animals": CategoryTheme(
-    gradient: [Color(0xFF0E3324), Color(0xFF071C13)],
-    accent: Color(0xFF00E676),
-    iconBg: Color(0xFF18533B),
-  ),
-  "Leaders": CategoryTheme(
-    gradient: [Color(0xFF381B4B), Color(0xFF1A0A26)],
-    accent: Color(0xFFFFD54F),
-    iconBg: Color(0xFF562873),
-  ),
-  "Sports": CategoryTheme(
-    gradient: [Color(0xFF3E1C0A), Color(0xFF220D04)],
-    accent: Color(0xFFFF6D00),
-    iconBg: Color(0xFF632B0F),
-  ),
-  "Clothing": CategoryTheme(
-    gradient: [Color(0xFF39162D), Color(0xFF1C0916)],
-    accent: Color(0xFFFF4081),
-    iconBg: Color(0xFF5A2045),
-  ),
-  "Food": CategoryTheme(
-    gradient: [Color(0xFF3F2108), Color(0xFF220F02)],
-    accent: Color(0xFFFF9100),
-    iconBg: Color(0xFF663309),
-  ),
-  "Drinks": CategoryTheme(
-    gradient: [Color(0xFF092E38), Color(0xFF041920)],
-    accent: Color(0xFF1DE9B6),
-    iconBg: Color(0xFF104D5E),
-  ),
-  "Places": CategoryTheme(
-    gradient: [Color(0xFF132544), Color(0xFF081427)],
-    accent: Color(0xFF448AFF),
-    iconBg: Color(0xFF1E3A6B),
-  ),
-  "Professions": CategoryTheme(
-    gradient: [Color(0xFF1C2738), Color(0xFF0D1420)],
-    accent: Color(0xFF64B5F6),
-    iconBg: Color(0xFF2B3D59),
-  ),
-  "Video Games": CategoryTheme(
-    gradient: [Color(0xFF2D0F3F), Color(0xFF150421)],
-    accent: Color(0xFFD500F9),
-    iconBg: Color(0xFF4A166B),
-  ),
-  "Superheroes": CategoryTheme(
-    gradient: [Color(0xFF3B0C15), Color(0xFF1F040A)],
-    accent: Color(0xFFFF1744),
-    iconBg: Color(0xFF5F1221),
-  ),
-  "Musical Artists": CategoryTheme(
-    gradient: [Color(0xFF26123D), Color(0xFF120721)],
-    accent: Color(0xFFB388FF),
-    iconBg: Color(0xFF411E66),
-  ),
-  "Brands": CategoryTheme(
-    gradient: [Color(0xFF242633), Color(0xFF11121C)],
-    accent: Color(0xFFB0BEC5),
-    iconBg: Color(0xFF373A4F),
-  ),
-  "Household Items": CategoryTheme(
-    gradient: [Color(0xFF2F2119), Color(0xFF170F0B)],
-    accent: Color(0xFFFFB74D),
-    iconBg: Color(0xFF4D3525),
-  ),
-  "Vehicles": CategoryTheme(
-    gradient: [Color(0xFF122C38), Color(0xFF061720)],
-    accent: Color(0xFF00B0FF),
-    iconBg: Color(0xFF1B475C),
-  ),
-  "Cartoons & Anime": CategoryTheme(
-    gradient: [Color(0xFF3A0F2B), Color(0xFF1D0516)],
-    accent: Color(0xFFFF5252),
-    iconBg: Color(0xFF5D1744),
-  ),
-  "Landmarks": CategoryTheme(
-    gradient: [Color(0xFF332712), Color(0xFF1A1307)],
-    accent: Color(0xFFFFCA28),
-    iconBg: Color(0xFF533F1B),
-  ),
-  "Instruments": CategoryTheme(
-    gradient: [Color(0xFF2E1911), Color(0xFF170A06)],
-    accent: Color(0xFFFF8A65),
-    iconBg: Color(0xFF4B271A),
-  ),
-  "Desserts": CategoryTheme(
-    gradient: [Color(0xFF3B1524), Color(0xFF1F0913)],
-    accent: Color(0xFFFF80AB),
-    iconBg: Color(0xFF5F1E37),
-  ),
-};
-
-class AbstractCardPainter extends CustomPainter {
-  final Color accentColor;
-
-  AbstractCardPainter({required this.accentColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // 1. Top-right subtle radial glow bloom
-    final glowPaint = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(0.7, -0.6),
-        radius: 0.9,
-        colors: [
-          accentColor.withValues(alpha: 0.18),
-          accentColor.withValues(alpha: 0.0),
-        ],
-      ).createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, glowPaint);
-
-    // 2. Abstract orbital geometry in background
-    final ringPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0
-      ..color = accentColor.withValues(alpha: 0.12);
-
-    canvas.drawCircle(
-      Offset(size.width * 0.85, size.height * 0.15),
-      size.width * 0.35,
-      ringPaint,
-    );
-    canvas.drawCircle(
-      Offset(size.width * 0.85, size.height * 0.15),
-      size.width * 0.55,
-      ringPaint,
-    );
-
-    // 3. Subtle angled laser shard line
-    final linePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
-      ..color = accentColor.withValues(alpha: 0.15);
-    canvas.drawLine(
-      Offset(size.width * 0.1, size.height * 0.85),
-      Offset(size.width * 0.45, size.height * 0.95),
-      linePaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant AbstractCardPainter oldDelegate) =>
-      oldDelegate.accentColor != accentColor;
 }
 
 // ---------- Questioning Derangement Generator ----------
@@ -594,8 +426,10 @@ class _GamePageState extends State<GamePage> {
   bool revealed = false;
 
   // Voting: every player votes, one at a time, for someone else in private.
-  int get votesPerPlayer =>
-      (selectedMode.id == GameModeId.twoFrauds || selectedMode.id == GameModeId.undercover) ? 2 : 1;
+  int get votesPerPlayer => (selectedMode.id == GameModeId.twoFrauds ||
+          selectedMode.id == GameModeId.undercover)
+      ? 2
+      : 1;
   int voteIdx = 0;
   bool voteRevealed = false;
   int? votePick;
@@ -676,9 +510,8 @@ class _GamePageState extends State<GamePage> {
   void startRound() {
     final cat = chosenCat;
     if (cat == null) return;
-    var pool = categories[cat]!
-        .where((w) => !usedWords.contains('$cat|$w'))
-        .toList();
+    var pool =
+        categories[cat]!.where((w) => !usedWords.contains('$cat|$w')).toList();
     if (pool.isEmpty) {
       usedWords.removeWhere((k) => k.startsWith('$cat|'));
       pool = List.of(categories[cat]!);
@@ -690,7 +523,8 @@ class _GamePageState extends State<GamePage> {
     // Pick undercover decoy word if mode has undercover
     String undercoverWord = '';
     if (selectedMode.hasUndercover) {
-      final otherWords = categories[cat]!.where((w) => w != word).toList()..shuffle(rng);
+      final otherWords = categories[cat]!.where((w) => w != word).toList()
+        ..shuffle(rng);
       undercoverWord = otherWords.isNotEmpty ? otherWords.first : 'Decoy';
     }
 
@@ -698,7 +532,8 @@ class _GamePageState extends State<GamePage> {
     final indices = List.generate(players.length, (i) => i)..shuffle(rng);
     final frauds = indices.take(selectedMode.fraudCount).toSet();
     int? undercover;
-    if (selectedMode.hasUndercover && indices.length > selectedMode.fraudCount) {
+    if (selectedMode.hasUndercover &&
+        indices.length > selectedMode.fraudCount) {
       undercover = indices[selectedMode.fraudCount];
     }
 
@@ -794,7 +629,8 @@ class _GamePageState extends State<GamePage> {
             borderRadius: BorderRadius.circular(24),
             side: const BorderSide(color: border, width: 1.5),
           ),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: Column(
@@ -974,15 +810,19 @@ class _GamePageState extends State<GamePage> {
 
       // All caught agents finished guessing! Award points to voters:
       for (int voter = 0; voter < players.length; voter++) {
-        final isAgent = fraudIndices.contains(voter) || voter == undercoverIndex;
+        final isAgent =
+            fraudIndices.contains(voter) || voter == undercoverIndex;
         if (!isAgent) {
           final voterTargets = playerVotesMulti[voter] ??
-              (playerVotes.containsKey(voter) ? [playerVotes[voter]!] : <int>[]);
+              (playerVotes.containsKey(voter)
+                  ? [playerVotes[voter]!]
+                  : <int>[]);
           final caughtCount = voterTargets
               .where((t) => caughtFrauds.contains(t) || t == guessingFraudIndex)
               .length;
           if (caughtCount == 1) {
-            scores[players[voter]] = (scores[players[voter]] ?? 0) + roundPoints;
+            scores[players[voter]] =
+                (scores[players[voter]] ?? 0) + roundPoints;
             pointsEarnedThisRound[voter] = roundPoints;
           } else if (caughtCount >= 2) {
             // 100 pts for 1st caught agent + 50 bonus pts for catching 2nd!
@@ -1022,8 +862,9 @@ class _GamePageState extends State<GamePage> {
       guessPick != null && guessOptions[guessPick!] == roundWord;
 
   String get resultTitle {
-    final totalAgents = (selectedMode.fraudCount > 0 ? selectedMode.fraudCount : 0) +
-        (selectedMode.hasUndercover ? 1 : 0);
+    final totalAgents =
+        (selectedMode.fraudCount > 0 ? selectedMode.fraudCount : 0) +
+            (selectedMode.hasUndercover ? 1 : 0);
     final caughtCount = caughtFrauds.length;
 
     if (caughtCount == 0) {
@@ -1163,7 +1004,8 @@ class _GamePageState extends State<GamePage> {
                 onTap: () async {
                   final confirmed = await _confirmAction(
                     title: 'Restart Round?',
-                    message: 'This will deal fresh roles and start the round over.',
+                    message:
+                        'This will deal fresh roles and start the round over.',
                     confirmLabel: 'Restart',
                   );
                   if (confirmed && dialogCtx.mounted) {
@@ -1182,7 +1024,8 @@ class _GamePageState extends State<GamePage> {
                 onTap: () async {
                   final confirmed = await _confirmAction(
                     title: 'Change Players?',
-                    message: 'This will abandon the current round and let you edit the player list.',
+                    message:
+                        'This will abandon the current round and let you edit the player list.',
                     confirmLabel: 'Change',
                   );
                   if (confirmed && dialogCtx.mounted) {
@@ -1200,7 +1043,8 @@ class _GamePageState extends State<GamePage> {
                 onTap: () async {
                   final confirmed = await _confirmAction(
                     title: 'Return to Main Menu?',
-                    message: 'Are you sure you want to return to the main menu?',
+                    message:
+                        'Are you sure you want to return to the main menu?',
                     confirmLabel: 'Confirm',
                   );
                   if (confirmed && dialogCtx.mounted) {
@@ -1348,7 +1192,8 @@ class _GamePageState extends State<GamePage> {
             Positioned.fill(
               child: IgnorePointer(
                 child: Container(
-                  color: Colors.black.withValues(alpha: (1.0 - brightness) * 0.75),
+                  color:
+                      Colors.black.withValues(alpha: (1.0 - brightness) * 0.75),
                 ),
               ),
             ),
@@ -1399,16 +1244,20 @@ class _GamePageState extends State<GamePage> {
         ),
       );
 
-  Widget _primary(String label, VoidCallback? onPressed, {Color? color}) => SizedBox(
+  Widget _primary(String label, VoidCallback? onPressed, {Color? color}) =>
+      SizedBox(
         width: double.infinity,
         child: ElevatedButton(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
             backgroundColor: color ?? yellow,
-            foregroundColor: color != null ? Colors.white : const Color(0xFF1A1400),
+            foregroundColor:
+                color != null ? Colors.white : const Color(0xFF1A1400),
             padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            textStyle:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           child: Text(label, textAlign: TextAlign.center),
         ),
@@ -1453,8 +1302,10 @@ class _GamePageState extends State<GamePage> {
             foregroundColor: ink,
             side: const BorderSide(color: border),
             padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            textStyle:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           child: Text(label, textAlign: TextAlign.center),
         ),
@@ -1488,7 +1339,8 @@ class _GamePageState extends State<GamePage> {
   Widget _categoryLabel(String cat, {double size = 16}) => Text(
         cat,
         textAlign: TextAlign.center,
-        style: TextStyle(color: yellow, fontSize: size, fontWeight: FontWeight.w800),
+        style: TextStyle(
+            color: yellow, fontSize: size, fontWeight: FontWeight.w800),
       );
 
   // ---------- Screens ----------
@@ -1573,7 +1425,8 @@ class _GamePageState extends State<GamePage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _title('Select Game Mode'),
-          _mutedText('Pick the game mode for your round. Add or adjust modes directly in code:'),
+          _mutedText(
+              'Pick the game mode for your round. Add or adjust modes directly in code:'),
           const SizedBox(height: 16),
           ...availableGameModes.map((m) {
             final isSelected = selectedMode.id == m.id;
@@ -1625,7 +1478,9 @@ class _GamePageState extends State<GamePage> {
                               m.fraudCount > 1
                                   ? '2 Frauds'
                                   : m.hasUndercover
-                                      ? (m.fraudCount == 0 ? '1 Undercover' : '1 Fraud + 1 Undercover')
+                                      ? (m.fraudCount == 0
+                                          ? '1 Undercover'
+                                          : '1 Fraud + 1 Undercover')
                                       : '1 Fraud',
                               style: const TextStyle(
                                   fontSize: 11,
@@ -1654,7 +1509,9 @@ class _GamePageState extends State<GamePage> {
             );
           }),
           const SizedBox(height: 8),
-          _secondary('Back to main menu', () { confirmGoHome(); }),
+          _secondary('Back to main menu', () {
+            confirmGoHome();
+          }),
         ],
       );
 
@@ -1683,7 +1540,8 @@ class _GamePageState extends State<GamePage> {
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               side: const BorderSide(color: border),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
               backgroundColor: card2,
             ),
           ),
@@ -1717,10 +1575,12 @@ class _GamePageState extends State<GamePage> {
                   },
                 );
               }).toList(),
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-          _secondary('Back to main menu', () { confirmGoHome(); }),
+          const SizedBox(height: 16),
+          _secondary('Back to main menu', () {
+            confirmGoHome();
+          }),
         ],
       );
 
@@ -1755,7 +1615,8 @@ class _GamePageState extends State<GamePage> {
             child: Text(
               '${selectedMode.minPlayers} to ${selectedMode.maxPlayers} players',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                  color: muted, fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(height: 16),
@@ -1764,7 +1625,8 @@ class _GamePageState extends State<GamePage> {
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: card,
                   borderRadius: BorderRadius.circular(16),
@@ -1797,17 +1659,21 @@ class _GamePageState extends State<GamePage> {
                       child: TextField(
                         key: ValueKey('player-$i-$playerCount'),
                         controller: TextEditingController(text: players[i])
-                          ..selection = TextSelection.collapsed(offset: players[i].length),
+                          ..selection = TextSelection.collapsed(
+                              offset: players[i].length),
                         onChanged: (v) {
-                          players[i] = v.trim().isEmpty ? 'Player ${i + 1}' : v.trim();
+                          players[i] =
+                              v.trim().isEmpty ? 'Player ${i + 1}' : v.trim();
                         },
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700),
                         decoration: InputDecoration(
                           hintText: 'Player ${i + 1}',
                           hintStyle: const TextStyle(color: muted),
                           border: InputBorder.none,
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 8),
                         ),
                       ),
                     ),
@@ -1872,7 +1738,8 @@ class _GamePageState extends State<GamePage> {
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.add_circle_outline_rounded, size: 20, color: yellow),
+                      Icon(Icons.add_circle_outline_rounded,
+                          size: 20, color: yellow),
                       SizedBox(width: 8),
                       Text(
                         'Add player',
@@ -1888,14 +1755,18 @@ class _GamePageState extends State<GamePage> {
               ),
             ),
           const SizedBox(height: 12),
-          _primary('Start round', chosenCat == null
-              ? null
-              : () {
-                  Sound.start();
-                  startRound();
-                }),
+          _primary(
+              'Start round',
+              chosenCat == null
+                  ? null
+                  : () {
+                      Sound.start();
+                      startRound();
+                    }),
           const SizedBox(height: 8),
-          _secondary('Back to main menu', () { confirmGoHome(); }),
+          _secondary('Back to main menu', () {
+            confirmGoHome();
+          }),
         ],
       );
 
@@ -1918,7 +1789,8 @@ class _GamePageState extends State<GamePage> {
                         color: card2,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.volume_up_rounded, color: yellow, size: 22),
+                      child: const Icon(Icons.volume_up_rounded,
+                          color: yellow, size: 22),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
@@ -1954,7 +1826,8 @@ class _GamePageState extends State<GamePage> {
                     },
                     title: const Text(
                       'Sound effects',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                      style:
+                          TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                     ),
                     activeThumbColor: yellow,
                   ),
@@ -1965,7 +1838,9 @@ class _GamePageState extends State<GamePage> {
                     Icon(
                       !Sound.enabled || Sound.volume == 0
                           ? Icons.volume_off_rounded
-                          : (Sound.volume < 0.5 ? Icons.volume_down_rounded : Icons.volume_up_rounded),
+                          : (Sound.volume < 0.5
+                              ? Icons.volume_down_rounded
+                              : Icons.volume_up_rounded),
                       color: Sound.enabled ? yellow : muted,
                       size: 22,
                     ),
@@ -2025,7 +1900,8 @@ class _GamePageState extends State<GamePage> {
                         color: card2,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.brightness_6_rounded, color: yellow, size: 22),
+                      child: const Icon(Icons.brightness_6_rounded,
+                          color: yellow, size: 22),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
@@ -2052,7 +1928,8 @@ class _GamePageState extends State<GamePage> {
                 const SizedBox(height: 14),
                 Row(
                   children: [
-                    const Icon(Icons.brightness_low_rounded, color: muted, size: 20),
+                    const Icon(Icons.brightness_low_rounded,
+                        color: muted, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: SliderTheme(
@@ -2073,13 +1950,17 @@ class _GamePageState extends State<GamePage> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(Icons.brightness_high_rounded, color: yellow, size: 20),
+                    const Icon(Icons.brightness_high_rounded,
+                        color: yellow, size: 20),
                     const SizedBox(width: 8),
                     SizedBox(
                       width: 44,
                       child: Text(
                         '${(brightness * 100).round()}%',
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: ink),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: ink),
                         textAlign: TextAlign.end,
                       ),
                     ),
@@ -2223,7 +2104,8 @@ class _GamePageState extends State<GamePage> {
             ),
             child: Text(
               'Category: $roundCat',
-              style: const TextStyle(color: yellow, fontSize: 14, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                  color: yellow, fontSize: 14, fontWeight: FontWeight.w800),
             ),
           ),
         ),
@@ -2259,7 +2141,8 @@ class _GamePageState extends State<GamePage> {
                 decoration: BoxDecoration(
                   color: card2,
                   shape: BoxShape.circle,
-                  border: Border.all(color: yellow.withValues(alpha: 0.7), width: 2),
+                  border: Border.all(
+                      color: yellow.withValues(alpha: 0.7), width: 2),
                   boxShadow: [
                     BoxShadow(
                       color: yellow.withValues(alpha: 0.3),
@@ -2278,14 +2161,19 @@ class _GamePageState extends State<GamePage> {
               const Text(
                 'Pass the phone',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5),
               ),
               const SizedBox(height: 6),
-              _mutedText('No peeking! Only the person holding the phone should look.'),
+              _mutedText(
+                  'No peeking! Only the person holding the phone should look.'),
               const SizedBox(height: 18),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
                 decoration: BoxDecoration(
                   color: card2,
                   borderRadius: BorderRadius.circular(16),
@@ -2305,7 +2193,8 @@ class _GamePageState extends State<GamePage> {
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
                         color: yellow.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
@@ -2355,7 +2244,8 @@ class _GamePageState extends State<GamePage> {
             ),
             child: Text(
               'Category: $roundCat',
-              style: const TextStyle(color: yellow, fontSize: 14, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                  color: yellow, fontSize: 14, fontWeight: FontWeight.w800),
             ),
           ),
         ),
@@ -2366,7 +2256,8 @@ class _GamePageState extends State<GamePage> {
           isUndercover: isUndercover,
         ),
         const SizedBox(height: 16),
-        _primary(last ? 'Hide and start discussion' : 'Hide and pass on', hideAndPass),
+        _primary(last ? 'Hide and start discussion' : 'Hide and pass on',
+            hideAndPass),
       ],
     );
   }
@@ -2449,7 +2340,8 @@ class _GamePageState extends State<GamePage> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: card2,
-              border: Border.all(color: yellow.withValues(alpha: 0.8), width: 2),
+              border:
+                  Border.all(color: yellow.withValues(alpha: 0.8), width: 2),
               boxShadow: [
                 BoxShadow(
                   color: yellow.withValues(alpha: 0.4),
@@ -2589,7 +2481,9 @@ class _GamePageState extends State<GamePage> {
             child: Text(
               isFraud
                   ? 'YOU ARE THE FRAUD'
-                  : (isUndercover ? 'YOU ARE UNDERCOVER' : 'YOU ARE NOT THE FRAUD'),
+                  : (isUndercover
+                      ? 'YOU ARE UNDERCOVER'
+                      : 'YOU ARE NOT THE FRAUD'),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 22,
@@ -2614,7 +2508,11 @@ class _GamePageState extends State<GamePage> {
                     ? 'There are 2 frauds this round! Listen closely, blend in, and try to deduce the secret word.'
                     : 'Try to blend in! Listen to clues, pretend you know the word, and deduce it before voting.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: ink, fontSize: 15, fontWeight: FontWeight.w600, height: 1.4),
+                style: const TextStyle(
+                    color: ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4),
               ),
             ),
           ] else if (isUndercover) ...[
@@ -2708,15 +2606,15 @@ class _GamePageState extends State<GamePage> {
     final bool validLists = questionAskers.isNotEmpty &&
         questionTargets.isNotEmpty &&
         questionAskers.length == questionTargets.length;
-    final List<int> askers = validLists
-        ? questionAskers
-        : List.generate(totalQuestions, (i) => i);
+    final List<int> askers =
+        validLists ? questionAskers : List.generate(totalQuestions, (i) => i);
     final List<int> targets = validLists
         ? questionTargets
         : List.generate(totalQuestions, (i) => (i + 1) % totalQuestions);
 
     final safeTurn = questionTurnIdx < 0 ? 0 : questionTurnIdx;
-    final currentIdx = safeTurn < askers.length ? safeTurn : (safeTurn % askers.length);
+    final currentIdx =
+        safeTurn < askers.length ? safeTurn : (safeTurn % askers.length);
     final askerName = players[askers[currentIdx] % players.length];
     final responderName = players[targets[currentIdx] % players.length];
 
@@ -2752,7 +2650,8 @@ class _GamePageState extends State<GamePage> {
           ),
           child: Text(
             'Round ${(safeTurn ~/ totalQuestions) + 1} • Question ${(safeTurn % totalQuestions) + 1} of $totalQuestions',
-            style: const TextStyle(color: yellow, fontSize: 13, fontWeight: FontWeight.w800),
+            style: const TextStyle(
+                color: yellow, fontSize: 13, fontWeight: FontWeight.w800),
           ),
         ),
         const SizedBox(height: 10),
@@ -2769,7 +2668,11 @@ class _GamePageState extends State<GamePage> {
           child: const Text(
             'Give clues and ask each other questions. Do not say your secret word!',
             textAlign: TextAlign.center,
-            style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w600, height: 1.3),
+            style: TextStyle(
+                color: ink,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                height: 1.3),
           ),
         ),
         if (timerMinutes > 0) ...[
@@ -2804,11 +2707,13 @@ class _GamePageState extends State<GamePage> {
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 decoration: BoxDecoration(
                   color: card2,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: yellow.withValues(alpha: 0.5), width: 1.5),
+                  border: Border.all(
+                      color: yellow.withValues(alpha: 0.5), width: 1.5),
                 ),
                 child: Text(
                   askerName,
@@ -2833,7 +2738,8 @@ class _GamePageState extends State<GamePage> {
               ),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 decoration: BoxDecoration(
                   color: card2,
                   borderRadius: BorderRadius.circular(14),
@@ -2860,9 +2766,12 @@ class _GamePageState extends State<GamePage> {
                     backgroundColor: yellow,
                     foregroundColor: const Color(0xFF1A1400),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Next question', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  child: const Text('Next question',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                 ),
               ),
             ],
@@ -2908,7 +2817,8 @@ class _GamePageState extends State<GamePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: card,
                   borderRadius: BorderRadius.circular(10),
@@ -2967,7 +2877,8 @@ class _GamePageState extends State<GamePage> {
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
                     color: selected ? const Color(0xFF1B2F5C) : card,
                     borderRadius: BorderRadius.circular(16),
@@ -3027,7 +2938,8 @@ class _GamePageState extends State<GamePage> {
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: selected ? const Color(0xFF8DC0FF) : muted,
+                                color:
+                                    selected ? const Color(0xFF8DC0FF) : muted,
                               ),
                             ),
                           ],
@@ -3086,7 +2998,8 @@ class _GamePageState extends State<GamePage> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                       side: BorderSide(color: selected ? blue : border)),
-                  textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  textStyle: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w800),
                 ),
                 child: Text(guessOptions[i], textAlign: TextAlign.center),
               ),
@@ -3101,8 +3014,9 @@ class _GamePageState extends State<GamePage> {
   Widget _result() {
     final sorted = scores.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final totalAgents = (selectedMode.fraudCount > 0 ? selectedMode.fraudCount : 0) +
-        (selectedMode.hasUndercover ? 1 : 0);
+    final totalAgents =
+        (selectedMode.fraudCount > 0 ? selectedMode.fraudCount : 0) +
+            (selectedMode.hasUndercover ? 1 : 0);
     final isSplit = totalAgents >= 2 &&
         caughtFrauds.isNotEmpty &&
         caughtFrauds.length < totalAgents;
@@ -3149,7 +3063,8 @@ class _GamePageState extends State<GamePage> {
               colors: [Color(0xFF202652), Color(0xFF121630)],
             ),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: yellow.withValues(alpha: 0.5), width: 1.5),
+            border:
+                Border.all(color: yellow.withValues(alpha: 0.5), width: 1.5),
             boxShadow: [
               BoxShadow(
                 color: yellow.withValues(alpha: 0.15),
@@ -3163,21 +3078,30 @@ class _GamePageState extends State<GamePage> {
             children: [
               // Secret Word Hero Display
               const Text('SECRET WORD',
-                  style: TextStyle(color: muted, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+                  style: TextStyle(
+                      color: muted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5)),
               const SizedBox(height: 4),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
                   roundWord,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: ink, letterSpacing: 0.5),
+                  style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900,
+                      color: ink,
+                      letterSpacing: 0.5),
                 ),
               ),
               if (fraudIndices.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 // Fraud Pill
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: card2,
                     borderRadius: BorderRadius.circular(12),
@@ -3188,14 +3112,16 @@ class _GamePageState extends State<GamePage> {
                         ? 'Frauds: ${fraudIndices.map((i) => players[i]).join(', ')}'
                         : 'Fraud: ${fraudIndices.map((i) => players[i]).join(', ')}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontWeight: FontWeight.w800, color: ink, fontSize: 14),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, color: ink, fontSize: 14),
                   ),
                 ),
               ],
               if (undercoverIndex != null) ...[
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: card2,
                     borderRadius: BorderRadius.circular(12),
@@ -3204,7 +3130,8 @@ class _GamePageState extends State<GamePage> {
                   child: Text(
                     'Undercover: ${players[undercoverIndex!]} ($roundUndercoverWord)',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontWeight: FontWeight.w800, color: ink, fontSize: 13),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, color: ink, fontSize: 13),
                   ),
                 ),
               ],
@@ -3226,34 +3153,42 @@ class _GamePageState extends State<GamePage> {
               ...List.generate(sorted.length, (rankIdx) {
                 final entry = sorted[rankIdx];
                 final pIdx = players.indexOf(entry.key);
-                final delta = pIdx != -1 ? (pointsEarnedThisRound[pIdx] ?? 0) : 0;
+                final delta =
+                    pIdx != -1 ? (pointsEarnedThisRound[pIdx] ?? 0) : 0;
                 final targets = pIdx != -1
                     ? (playerVotesMulti[pIdx] ??
-                        (playerVotes.containsKey(pIdx) ? [playerVotes[pIdx]!] : <int>[]))
+                        (playerVotes.containsKey(pIdx)
+                            ? [playerVotes[pIdx]!]
+                            : <int>[]))
                     : <int>[];
                 final validTargets = targets
                     .where((t) => t >= 0 && t < players.length)
                     .map((t) => players[t])
                     .toList();
-                final votedTarget = validTargets.isNotEmpty
-                    ? validTargets.join(', ')
-                    : null;
+                final votedTarget =
+                    validTargets.isNotEmpty ? validTargets.join(', ') : null;
                 final rankNum = '${rankIdx + 1}.';
 
                 return Container(
                   margin: const EdgeInsets.symmetric(vertical: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     color: rankIdx < 3 ? card2 : card2.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: rankIdx == 0 ? yellow.withValues(alpha: 0.6) : border,
+                      color:
+                          rankIdx == 0 ? yellow.withValues(alpha: 0.6) : border,
                       width: rankIdx == 0 ? 1.5 : 1.0,
                     ),
                   ),
                   child: Row(
                     children: [
-                      Text(rankNum, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: yellow)),
+                      Text(rankNum,
+                          style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: yellow)),
                       const SizedBox(width: 8),
                       Expanded(
                         flex: 3,
@@ -3265,7 +3200,10 @@ class _GamePageState extends State<GamePage> {
                             Text(
                               entry.key,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ink),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                  color: ink),
                             ),
                             if (votedTarget != null)
                               Text(
@@ -3293,10 +3231,12 @@ class _GamePageState extends State<GamePage> {
                               children: [
                                 if (delta > 0) ...[
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 5, vertical: 2),
                                     margin: const EdgeInsets.only(right: 6),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                      color: const Color(0xFF10B981)
+                                          .withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
@@ -3342,9 +3282,11 @@ class _GamePageState extends State<GamePage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: yellow,
               foregroundColor: const Color(0xFF1A1400),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Continue', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            child: const Text('Continue',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
           ),
         ),
         const SizedBox(height: 6),
@@ -3359,16 +3301,17 @@ class _GamePageState extends State<GamePage> {
             style: OutlinedButton.styleFrom(
               foregroundColor: ink,
               side: const BorderSide(color: border),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Return to main menu', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+            child: const Text('Return to main menu',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
     );
   }
 }
-
 
 class _CategoryCard extends StatefulWidget {
   final String cat;
@@ -3519,11 +3462,14 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
         isLeft: isLeft,
         delay: rng.nextDouble() * 0.12,
         xSpread: rng.nextDouble(),
-        apexRatio: 0.16 + rng.nextDouble() * 0.14, // peaks between 16% and 30% height
-        descentRatio: 0.40 + rng.nextDouble() * 0.10, // descends only down to 40% - 50% height
+        apexRatio:
+            0.16 + rng.nextDouble() * 0.14, // peaks between 16% and 30% height
+        descentRatio: 0.40 +
+            rng.nextDouble() * 0.10, // descends only down to 40% - 50% height
         wobbleSpeed: 2.0 + rng.nextDouble() * 2.5,
         wobbleAmp: 14.0 + rng.nextDouble() * 18.0,
-        rotationSpeed: (rng.nextBool() ? 1 : -1) * (1.8 + rng.nextDouble() * 2.5),
+        rotationSpeed:
+            (rng.nextBool() ? 1 : -1) * (1.8 + rng.nextDouble() * 2.5),
         width: 5.0 + rng.nextDouble() * 4.0,
         height: 9.0 + rng.nextDouble() * 5.0,
         color: _confettiColors[rng.nextInt(_confettiColors.length)],
@@ -3654,7 +3600,8 @@ class _ConfettiPainter extends CustomPainter {
       } else {
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-            Rect.fromCenter(center: Offset.zero, width: p.width, height: p.height),
+            Rect.fromCenter(
+                center: Offset.zero, width: p.width, height: p.height),
             const Radius.circular(2),
           ),
           paint,
@@ -3665,5 +3612,6 @@ class _ConfettiPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ConfettiPainter oldDelegate) => oldDelegate.progress != progress;
+  bool shouldRepaint(_ConfettiPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

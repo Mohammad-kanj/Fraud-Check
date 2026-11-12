@@ -1,45 +1,53 @@
-# Fraud Check — Flutter app
+# Fraud Check
 
-A genuine mobile app version of Fraud Check — the pass-and-play party game of deception.
-One phone, 3–10 players, no login, no internet, offline party gameplay.
+A pass-and-play social deduction party game built with Flutter for **3 to 10 players** on a single phone — no accounts, no internet connection, and no setup hassle.
 
-## What is in this version (v1.2.0)
+One secret word. At least one Fraud trying to blend in. Ask sharp questions, read the room, and vote out the impostor before they figure out the word.
 
-- **Game Modes (Configurable in code):**
-  - **Classic:** 1 fraud who only knows the category. Pure deduction (3–10 players).
-  - **Two Frauds:** 2 players are chosen as frauds. Double the deception and chaos (4–10 players).
-  - **Undercover:** 1 fraud + 1 undercover agent. The undercover agent is explicitly informed of their role and given a different decoy word from the same category to blend in (4–10 players).
-  - Modes are defined cleanly in code (`availableGameModes` in `lib/main.dart`), making it easy to add or customize modes directly in Dart.
-- **Main Menu Setup Flow (Option C):**
-  - Mode selection is integrated into the setup flow directly from the **Main Menu** (Play $\rightarrow$ Select Mode $\rightarrow$ Pick Category $\rightarrow$ Players).
-  - The in-game three-dot options menu (`showPassOptions`) during card passing remains clean and restricted strictly to round management (`Restart round`, `Change category`, `Change players`, `Back to main menu`).
-- **Party Scoring (+100 Points):**
-  - **Caught Fraud misses guess:** Every player who personally voted for the caught fraud earns **+100 points**! Players who voted for an innocent player receive 0 points.
-  - **Fraud Escapes or Guesses Right:** The fraud(s) earn **+100 points**! Safe players receive 0 points.
-  - **Undercover Agent:** Earns **+100 points** if they vote for the fraud or survive unexposed.
-  - The results screen details the complete breakdown: mode played, secret word, category, who the fraud(s) and undercover were, and a detailed round points log showing each player's action and points earned.
-- **Centred layout & Balatro-style background:**
-  - Responsive, centered layout with dark navy palette, gold/yellow accents, and smooth procedural swirling blobs and ripple rings.
-- **Sound effects & Offline Play:**
-  - Generated sounds for tapping, starting rounds, card reveals, voting, guessing, winning, and losing.
-  - Can be toggled on/off in Settings.
+---
+
+## Download & Play
+
+Ready to play on Android? Grab the latest release APK directly from GitHub:
+
+1. Open the **[GitHub Releases](https://github.com/Mohammad-kanj/Fraud-Check/releases)** page and download the latest `app-release.apk` (under **Assets**).
+2. Open the downloaded `.apk` file on your Android device.
+3. If prompted, allow your browser or file manager to install apps from unknown sources.
+4. Tap **Install**, launch **Fraud Check**, and pass the phone around.
+
+> **Tip:** You can also download the latest automated APK build from the most recent successful workflow run on the **[GitHub Actions](https://github.com/Mohammad-kanj/Fraud-Check/actions)** tab (look for the `fraud-check-apk` artifact).
+
+---
+
+## Features
+
+- **1,000 Secret Words Across 20 Categories:** Movies, TV Shows, Animals, Leaders, Sports, Clothing, Food, Drinks, Places, Professions, Video Games, Superheroes, Musical Artists, Brands, Household Items, Vehicles, Cartoons & Anime, Landmarks, Instruments, and Desserts — each paired with custom category artwork and tracked per session so words do not repeat.
+- **Three Game Modes:**
+  - **Classic** *(3–10 players)*: 1 Fraud who only knows the category.
+  - **Two Frauds** *(4–10 players)*: 2 Frauds trying to blend in and outlast the group.
+  - **Undercover** *(4–10 players)*: 1 Fraud who only knows the category plus 1 Undercover agent who receives a closely related decoy word from the same category.
+- **Pass-and-Play Privacy:** Flip-card role reveals on a single device keep every player's role hidden while passing the phone around, with an optional discussion timer and guided questioning pairings.
+- **Session Party Scoring:** Track scores across rounds without any accounts or external storage:
+  - **Correct Voters:** Players who vote out a Fraud (or Undercover agent) earn **100 points** (plus a **50-point bonus** in two-target modes if both votes hit caught agents).
+  - **Secret Word Guess:** If a caught Fraud or Undercover agent correctly guesses the secret word, they salvage **50 points**, while the group still wins the round.
+  - **Uncaught Agents:** Any Fraud or Undercover agent who avoids a majority vote earns **100 points**.
+- **Built-In Polish:** Procedural film-strip backdrop, end-of-round confetti celebration, custom sound effects with mute and volume controls, an in-app screen brightness slider, and a tabbed Rules guide.
+
+---
 
 ## How it plays
 
-1. Tap **Play** from the Main Menu, pick a **Game Mode** (Classic, Two Frauds, or Undercover), then choose a **Category** and configure your **Players** (3–10).
-2. **Pass the phone:** Each player privately reveals their own card:
-   - Safe players see `"YOU ARE SAFE"`, the category, and the secret word.
-   - The fraud sees `"YOU ARE THE FRAUD!"` and only the category.
-   - The undercover agent sees `"YOU ARE UNDERCOVER!"`, the category, and their secret decoy word.
-3. **Discuss:** Players take turns asking questions and giving clues without saying their secret word.
-4. **Vote:** Each player, one at a time and in private, votes for someone else.
-5. **Last chance:** If a fraud is caught by majority vote (> 50%), they get 4 word options from the category to guess from. A correct guess steals the round!
-6. **Scoring:** Points are awarded using Fraud Check party rules (+100 points per correct vote or fraud escape).
-7. Session scores are tracked on the Leaderboard across rounds.
+1. **Choose a mode, category, and player lineup** (3–10 players, with customizable names).
+2. **Pass the phone** around so each player can privately flip their card to see the secret word — or learn that they are the Fraud (or Undercover agent).
+3. **Question and discuss:** Follow the randomized questioning prompts or discuss freely before moving to the vote.
+4. **Vote privately:** Each player casts their vote(s) on the phone in turn.
+5. **Final guess and results:** If a Fraud or Undercover agent is caught by majority vote, they get one chance to guess the secret word from category decoys before round points and the updated leaderboard are revealed.
+
+---
 
 ## Adding or Editing Game Modes in Code
 
-All game modes are declared in `lib/main.dart` in the `availableGameModes` list:
+Game modes are defined cleanly in `lib/main.dart` inside `availableGameModes`, making it straightforward to add new presets or tweak player and role counts:
 
 ```dart
 const List<GameMode> availableGameModes = [
@@ -70,19 +78,25 @@ const List<GameMode> availableGameModes = [
 ];
 ```
 
-To add another mode (for example, 3 Frauds for larger parties), simply add another `GameMode` entry to `availableGameModes` and the app automatically displays it and enforces its rules!
+---
 
 ## Building the App
 
-### Option A — GitHub Actions (No local install needed)
-1. Push this folder to a GitHub repository.
-2. In the **Actions** tab, the `Build APK` workflow runs automatically.
-3. Download the `fraud-check-apk` artifact and install the `.apk` on your Android phone.
+### Option A — Build with GitHub Actions (No Local Android Studio Required)
 
-### Option B — Local Flutter Build
-```sh
-cd fraud-check-flutter
+1. **Fork this repository** on GitHub.
+2. Open the **Actions** tab and run the **Build Android APK** workflow (`.github/workflows/build-apk.yml`), or trigger it automatically on push.
+3. Download the compiled `fraud-check-apk` artifact from the finished workflow run.
+
+### Option B — Build Locally with Flutter
+
+```bash
+flutter create --project-name fraud_check --org com.fraudcheck --platforms android app
+cp -r lib assets pubspec.yaml app/
+cd app
 flutter pub get
+dart run flutter_launcher_icons
 flutter build apk --release
 ```
-The APK is generated at `build/app/outputs/flutter-apk/app-release.apk`.
+
+The release APK will be generated at `app/build/app/outputs/flutter-apk/app-release.apk`.

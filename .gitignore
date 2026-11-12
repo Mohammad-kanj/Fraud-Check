@@ -17,6 +17,10 @@ migrate_working_dir/
 .idea/
 .vscode/
 
+# Internal AI workspace files
+.agent/
+.agents/
+
 # Flutter / Dart
 .dart_tool/
 .flutter-plugins
