@@ -22,7 +22,7 @@ Ready to play on Android? Grab the latest release APK directly from GitHub:
 ## Features
 
 - **1,000 Secret Words Across 20 Categories:** Movies, TV Shows, Animals, Leaders, Sports, Clothing, Food, Drinks, Places, Professions, Video Games, Superheroes, Musical Artists, Brands, Household Items, Vehicles, Cartoons & Anime, Landmarks, Instruments, and Desserts — each paired with custom category artwork and tracked per session so words do not repeat.
-- **Three Game Modes:**
+- **Four Game Modes:**
   - **Classic** *(3–10 players)*: 1 Fraud who only knows the category.
   - **Two Frauds** *(4–10 players)*: 2 Frauds trying to blend in and outlast the group.
   - **Undercover** *(3–10 players)*: 1 Undercover agent who receives a closely related decoy word from the same category.
