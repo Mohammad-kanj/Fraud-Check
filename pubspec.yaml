@@ -22,13 +22,17 @@ flutter:
   assets:
     - assets/logo.png
     - assets/launcher_icon.png
+    - assets/sounds/
     - assets/sounds/tap.wav
     - assets/sounds/start.wav
     - assets/sounds/reveal.wav
+    - assets/sounds/back.wav
     - assets/sounds/vote.wav
     - assets/sounds/guess.wav
     - assets/sounds/win.wav
     - assets/sounds/lose.wav
+    - assets/sounds/fraud_win.wav
+    - assets/sounds/players_win.wav
     - assets/categories/
 
 flutter_launcher_icons:

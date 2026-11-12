@@ -123,10 +123,15 @@ class Sound {
   static Future<void> tap() => play('tap');
   static Future<void> start() => play('start');
   static Future<void> reveal() => play('reveal');
+  static Future<void> back() => play('back');
   static Future<void> vote() => play('vote');
-  static Future<void> guess() => play('guess');
-  static Future<void> win() => play('win');
-  static Future<void> lose() => play('lose');
+  static Future<void> fraudWin() => play('fraud_win');
+  static Future<void> playersWin() => play('players_win');
+
+  // Compatibility aliases
+  static Future<void> guess() => vote();
+  static Future<void> win() => playersWin();
+  static Future<void> lose() => fraudWin();
 }
 
 void main() => runApp(const FraudCheckApp());
@@ -661,7 +666,7 @@ class _GamePageState extends State<GamePage> {
 
   void removePlayerAt(int index) {
     if (players.length <= selectedMode.minPlayers) return;
-    Sound.vote();
+    Sound.back();
     setState(() {
       players.removeAt(index);
       playerCount = players.length;
@@ -936,13 +941,13 @@ class _GamePageState extends State<GamePage> {
         pointsEarnedThisRound[undercoverIndex!] = roundPoints;
       }
       screen = Screen.result;
-      Sound.lose();
+      Sound.fraudWin();
     }
   }
 
   void confirmGuess() {
     if (guessPick == null) return;
-    Sound.guess();
+    Sound.vote();
     setState(() {
       final isCorrect = guessOptions[guessPick!] == roundWord;
       if (isCorrect) {
@@ -1006,9 +1011,9 @@ class _GamePageState extends State<GamePage> {
 
       screen = Screen.result;
       if (resultTitle == 'THE PLAYERS WIN') {
-        Sound.win();
+        Sound.playersWin();
       } else {
-        Sound.lose();
+        Sound.fraudWin();
       }
     });
   }
@@ -1100,7 +1105,7 @@ class _GamePageState extends State<GamePage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: _primary(confirmLabel, () {
-                      Sound.vote();
+                      Sound.back();
                       Navigator.pop(ctx, true);
                     }, color: confirmColor),
                   ),
@@ -1240,7 +1245,7 @@ class _GamePageState extends State<GamePage> {
         child: InkWell(
           onTap: () {
             if (label == 'Back to main menu') {
-              Sound.vote();
+              Sound.back();
             } else {
               Sound.tap();
             }
@@ -1296,7 +1301,7 @@ class _GamePageState extends State<GamePage> {
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (screen != Screen.home) {
-          Sound.vote();
+          Sound.back();
           go(Screen.home);
         }
       },
@@ -2085,7 +2090,7 @@ class _GamePageState extends State<GamePage> {
           ),
           const SizedBox(height: 10),
           _secondary('Back to main menu', () {
-            Sound.vote();
+            Sound.back();
             go(Screen.home);
           }),
         ],
@@ -2192,7 +2197,7 @@ class _GamePageState extends State<GamePage> {
         ),
         const SizedBox(height: 12),
         _secondary('Back to main menu', () {
-          Sound.vote();
+          Sound.back();
           go(Screen.home);
         }),
       ],
@@ -3348,7 +3353,7 @@ class _GamePageState extends State<GamePage> {
           height: 44,
           child: OutlinedButton(
             onPressed: () {
-              Sound.vote();
+              Sound.back();
               confirmGoHome();
             },
             style: OutlinedButton.styleFrom(
@@ -3507,18 +3512,18 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
   void initState() {
     super.initState();
     final rng = Random();
-    // 44 total particles: 22 from left side, 22 from right side
-    _particles = List.generate(44, (index) {
+    // 70 total particles: 35 from left side, 35 from right side
+    _particles = List.generate(70, (index) {
       final isLeft = index.isEven;
       return _ConfettiParticle(
         isLeft: isLeft,
-        delay: rng.nextDouble() * 0.12, // rapid initial pop
+        delay: rng.nextDouble() * 0.12,
         xSpread: rng.nextDouble(),
-        apexRatio: 0.18 + rng.nextDouble() * 0.12, // peaks between 18% and 30% height
+        apexRatio: 0.16 + rng.nextDouble() * 0.14, // peaks between 16% and 30% height
         descentRatio: 0.40 + rng.nextDouble() * 0.10, // descends only down to 40% - 50% height
-        wobbleSpeed: 2.5 + rng.nextDouble() * 2.5,
-        wobbleAmp: 10.0 + rng.nextDouble() * 14.0,
-        rotationSpeed: (rng.nextBool() ? 1 : -1) * (2.5 + rng.nextDouble() * 3.5),
+        wobbleSpeed: 2.0 + rng.nextDouble() * 2.5,
+        wobbleAmp: 14.0 + rng.nextDouble() * 18.0,
+        rotationSpeed: (rng.nextBool() ? 1 : -1) * (1.8 + rng.nextDouble() * 2.5),
         width: 5.0 + rng.nextDouble() * 4.0,
         height: 9.0 + rng.nextDouble() * 5.0,
         color: _confettiColors[rng.nextInt(_confettiColors.length)],
@@ -3528,7 +3533,7 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 2700),
     )..forward();
   }
 
@@ -3604,27 +3609,27 @@ class _ConfettiPainter extends CustomPainter {
       if (t <= 0 || t >= 1.0) continue;
 
       // Vertical trajectory:
-      // Phase 1 (t in [0.0, 0.45]): Fast pop from 70% height upwards to apex (18%-30%)
-      // Phase 2 (t in [0.45, 1.0]): Gentle flutter down from apex to 40%-50% height
+      // Phase 1 (t in [0.0, 0.35]): Pop from 70% height upwards to apex (16%-30%)
+      // Phase 2 (t in [0.35, 1.0]): Slow, floaty, natural flutter down from apex to 40%-50% height
       final apexY = size.height * p.apexRatio;
       final finalY = size.height * p.descentRatio;
       double y;
-      if (t <= 0.45) {
-        final subT = t / 0.45;
+      if (t <= 0.35) {
+        final subT = t / 0.35;
         final curve = Curves.easeOutCubic.transform(subT);
         y = startY + (apexY - startY) * curve;
       } else {
-        final subT = (t - 0.45) / 0.55;
-        final curve = Curves.easeInOutQuad.transform(subT);
+        final subT = (t - 0.35) / 0.65;
+        final curve = Curves.easeInOutSine.transform(subT);
         y = apexY + (finalY - apexY) * curve;
       }
 
       // Horizontal trajectory:
-      // Left cannon shoots rightward towards center; Right cannon shoots leftward towards center
+      // Left cannon shoots rightward across center; Right cannon shoots leftward across center
       final startX = p.isLeft ? (size.width * 0.04) : (size.width * 0.96);
       final targetX = p.isLeft
-          ? (size.width * (0.25 + p.xSpread * 0.45))
-          : (size.width * (0.75 - p.xSpread * 0.45));
+          ? (size.width * (0.12 + p.xSpread * 0.76))
+          : (size.width * (0.88 - p.xSpread * 0.76));
       final xProgress = Curves.easeOutQuad.transform(t);
       final flutter = sin(t * pi * 2 * p.wobbleSpeed) * p.wobbleAmp;
       final x = startX + (targetX - startX) * xProgress + flutter;
@@ -3633,8 +3638,8 @@ class _ConfettiPainter extends CustomPainter {
       final angle = t * pi * 2 * p.rotationSpeed;
       final flip = cos(t * pi * 2 * (p.wobbleSpeed * 1.5));
 
-      // Fade out towards the end (starting at 60% progress, dissolves by 100%)
-      final opacity = t > 0.60 ? ((1.0 - t) / 0.40).clamp(0.0, 1.0) : 1.0;
+      // Gentle fade out towards the end (starting at 75% progress, dissolves by 100%)
+      final opacity = t > 0.75 ? ((1.0 - t) / 0.25).clamp(0.0, 1.0) : 1.0;
       final paint = Paint()
         ..color = p.color.withValues(alpha: opacity)
         ..style = PaintingStyle.fill;
