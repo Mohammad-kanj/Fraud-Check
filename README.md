@@ -45,41 +45,6 @@ Ready to play on Android? Grab the latest release APK directly from GitHub:
 
 ---
 
-## Adding or Editing Game Modes in Code
-
-Game modes are defined cleanly in `lib/main.dart` inside `availableGameModes`, making it straightforward to add new presets or tweak player and role counts:
-
-```dart
-const List<GameMode> availableGameModes = [
-  GameMode(
-    id: GameModeId.classic,
-    title: 'Classic',
-    subtitle: '1 fraud who only knows the category. Pure deduction.',
-    minPlayers: 3,
-    fraudCount: 1,
-    hasUndercover: false,
-  ),
-  GameMode(
-    id: GameModeId.twoFrauds,
-    title: 'Two Frauds',
-    subtitle: '2 frauds in the mix. Double the chaos and deception!',
-    minPlayers: 4,
-    fraudCount: 2,
-    hasUndercover: false,
-  ),
-  GameMode(
-    id: GameModeId.undercover,
-    title: 'Undercover',
-    subtitle: '1 fraud + 1 undercover agent with a secret decoy word!',
-    minPlayers: 4,
-    fraudCount: 1,
-    hasUndercover: true,
-  ),
-];
-```
-
----
-
 ## Building the App
 
 ### Option A — Build with GitHub Actions (No Local Android Studio Required)
