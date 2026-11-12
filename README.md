@@ -25,7 +25,8 @@ Ready to play on Android? Grab the latest release APK directly from GitHub:
 - **Three Game Modes:**
   - **Classic** *(3–10 players)*: 1 Fraud who only knows the category.
   - **Two Frauds** *(4–10 players)*: 2 Frauds trying to blend in and outlast the group.
-  - **Undercover** *(4–10 players)*: 1 Fraud who only knows the category plus 1 Undercover agent who receives a closely related decoy word from the same category.
+  - **Undercover** *(3–10 players)*: 1 Undercover agent who receives a closely related decoy word from the same category.
+  - **Chaos** *(4–10 players)*: 1 Fraud who only knows the category plus 1 Undercover agent who receives a closely related decoy word from the same category.
 - **Pass-and-Play Privacy:** Flip-card role reveals on a single device keep every player's role hidden while passing the phone around, with an optional discussion timer and guided questioning pairings.
 - **Session Party Scoring:** Track scores across rounds without any accounts or external storage:
   - **Correct Voters:** Players who vote out a Fraud (or Undercover agent) earn **100 points** (plus a **50-point bonus** in two-target modes if both votes hit caught agents).
