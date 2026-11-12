@@ -3507,13 +3507,17 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
   void initState() {
     super.initState();
     final rng = Random();
-    _particles = List.generate(36, (index) {
+    // 44 total particles: 22 from left side, 22 from right side
+    _particles = List.generate(44, (index) {
+      final isLeft = index.isEven;
       return _ConfettiParticle(
-        x: rng.nextDouble(),
-        delay: rng.nextDouble() * 0.15,
-        speed: 0.75 + rng.nextDouble() * 0.45,
+        isLeft: isLeft,
+        delay: rng.nextDouble() * 0.12, // rapid initial pop
+        xSpread: rng.nextDouble(),
+        apexRatio: 0.18 + rng.nextDouble() * 0.12, // peaks between 18% and 30% height
+        descentRatio: 0.40 + rng.nextDouble() * 0.10, // descends only down to 40% - 50% height
         wobbleSpeed: 2.5 + rng.nextDouble() * 2.5,
-        wobbleAmp: 12.0 + rng.nextDouble() * 16.0,
+        wobbleAmp: 10.0 + rng.nextDouble() * 14.0,
         rotationSpeed: (rng.nextBool() ? 1 : -1) * (2.5 + rng.nextDouble() * 3.5),
         width: 5.0 + rng.nextDouble() * 4.0,
         height: 9.0 + rng.nextDouble() * 5.0,
@@ -3524,7 +3528,7 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 1500),
     )..forward();
   }
 
@@ -3555,9 +3559,11 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
 }
 
 class _ConfettiParticle {
-  final double x;
+  final bool isLeft;
   final double delay;
-  final double speed;
+  final double xSpread;
+  final double apexRatio;
+  final double descentRatio;
   final double wobbleSpeed;
   final double wobbleAmp;
   final double rotationSpeed;
@@ -3567,9 +3573,11 @@ class _ConfettiParticle {
   final bool isCircle;
 
   const _ConfettiParticle({
-    required this.x,
+    required this.isLeft,
     required this.delay,
-    required this.speed,
+    required this.xSpread,
+    required this.apexRatio,
+    required this.descentRatio,
     required this.wobbleSpeed,
     required this.wobbleAmp,
     required this.rotationSpeed,
@@ -3588,24 +3596,45 @@ class _ConfettiPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final startY = size.height * 0.70; // pops from 70% of the screen upwards
+
     for (final p in particles) {
       if (progress < p.delay) continue;
       final t = (progress - p.delay) / (1.0 - p.delay);
       if (t <= 0 || t >= 1.0) continue;
 
-      // Vertical position: starts above top (-20) and falls past bottom
-      final y = -20.0 + (size.height + 60.0) * (t * p.speed);
-      if (y > size.height + 30.0) continue;
+      // Vertical trajectory:
+      // Phase 1 (t in [0.0, 0.45]): Fast pop from 70% height upwards to apex (18%-30%)
+      // Phase 2 (t in [0.45, 1.0]): Gentle flutter down from apex to 40%-50% height
+      final apexY = size.height * p.apexRatio;
+      final finalY = size.height * p.descentRatio;
+      double y;
+      if (t <= 0.45) {
+        final subT = t / 0.45;
+        final curve = Curves.easeOutCubic.transform(subT);
+        y = startY + (apexY - startY) * curve;
+      } else {
+        final subT = (t - 0.45) / 0.55;
+        final curve = Curves.easeInOutQuad.transform(subT);
+        y = apexY + (finalY - apexY) * curve;
+      }
 
-      // Horizontal sway (flutter)
-      final x = p.x * size.width + sin(t * pi * 2 * p.wobbleSpeed) * p.wobbleAmp;
+      // Horizontal trajectory:
+      // Left cannon shoots rightward towards center; Right cannon shoots leftward towards center
+      final startX = p.isLeft ? (size.width * 0.04) : (size.width * 0.96);
+      final targetX = p.isLeft
+          ? (size.width * (0.25 + p.xSpread * 0.45))
+          : (size.width * (0.75 - p.xSpread * 0.45));
+      final xProgress = Curves.easeOutQuad.transform(t);
+      final flutter = sin(t * pi * 2 * p.wobbleSpeed) * p.wobbleAmp;
+      final x = startX + (targetX - startX) * xProgress + flutter;
 
       // Rotation & 3D flutter scaling
       final angle = t * pi * 2 * p.rotationSpeed;
       final flip = cos(t * pi * 2 * (p.wobbleSpeed * 1.5));
 
-      // Gentle fade out towards the end
-      final opacity = t > 0.75 ? ((1.0 - t) / 0.25).clamp(0.0, 1.0) : 1.0;
+      // Fade out towards the end (starting at 60% progress, dissolves by 100%)
+      final opacity = t > 0.60 ? ((1.0 - t) / 0.40).clamp(0.0, 1.0) : 1.0;
       final paint = Paint()
         ..color = p.color.withValues(alpha: opacity)
         ..style = PaintingStyle.fill;
