@@ -1128,9 +1128,9 @@ class _GamePageState extends State<GamePage> {
 
   // Passing phone dialog: strictly for round control, NO mode switching mid-round.
   Future<void> showPassOptions() async {
-    final choice = await showDialog<String>(
+    await showDialog<void>(
       context: context,
-      builder: (context) => Dialog(
+      builder: (dialogCtx) => Dialog(
         backgroundColor: card,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
@@ -1155,58 +1155,70 @@ class _GamePageState extends State<GamePage> {
               _optionPill(
                 icon: Icons.refresh_rounded,
                 label: 'Restart round',
-                onTap: () => Navigator.pop(context, 'restart'),
+                onTap: () async {
+                  final confirmed = await _confirmAction(
+                    title: 'Restart Round?',
+                    message: 'This will deal fresh roles and start the round over.',
+                    confirmLabel: 'Restart',
+                  );
+                  if (confirmed && dialogCtx.mounted) {
+                    Navigator.pop(dialogCtx);
+                    if (mounted) {
+                      Sound.start();
+                      startRound();
+                    }
+                  }
+                },
               ),
               const SizedBox(height: 10),
               _optionPill(
                 icon: Icons.people_alt_rounded,
                 label: 'Change players',
-                onTap: () => Navigator.pop(context, 'players'),
+                onTap: () async {
+                  final confirmed = await _confirmAction(
+                    title: 'Change Players?',
+                    message: 'This will abandon the current round and let you edit the player list.',
+                    confirmLabel: 'Change',
+                  );
+                  if (confirmed && dialogCtx.mounted) {
+                    Navigator.pop(dialogCtx);
+                    if (mounted) {
+                      go(Screen.players);
+                    }
+                  }
+                },
               ),
               const SizedBox(height: 10),
               _optionPill(
                 icon: Icons.home_rounded,
                 label: 'Back to main menu',
-                onTap: () => Navigator.pop(context, 'home'),
+                onTap: () async {
+                  final confirmed = await _confirmAction(
+                    title: 'Return to Main Menu?',
+                    message: 'Are you sure you want to return to the main menu?',
+                    confirmLabel: 'Confirm',
+                  );
+                  if (confirmed && dialogCtx.mounted) {
+                    Navigator.pop(dialogCtx);
+                    if (mounted) {
+                      timer?.cancel();
+                      go(Screen.home);
+                    }
+                  }
+                },
               ),
               const SizedBox(height: 10),
               _optionPill(
                 icon: Icons.close_rounded,
                 label: 'Cancel',
                 isCancel: true,
-                onTap: () => Navigator.pop(context, 'cancel'),
+                onTap: () => Navigator.pop(dialogCtx),
               ),
             ],
           ),
         ),
       ),
     );
-    if (!mounted) return;
-    switch (choice) {
-      case 'restart':
-        final confirmed = await _confirmAction(
-          title: 'Restart Round?',
-          message: 'This will deal fresh roles and start the round over.',
-          confirmLabel: 'Restart',
-        );
-        if (confirmed) {
-          Sound.start();
-          startRound();
-        }
-      case 'players':
-        final confirmed = await _confirmAction(
-          title: 'Change Players?',
-          message: 'This will abandon the current round and let you edit the player list.',
-          confirmLabel: 'Change',
-        );
-        if (confirmed) {
-          go(Screen.players);
-        }
-      case 'home':
-        await confirmGoHome();
-      default:
-        break;
-    }
   }
 
   Widget _optionPill({
@@ -2865,56 +2877,30 @@ class _GamePageState extends State<GamePage> {
       children: [
         passTopBar(),
         const SizedBox(height: 6),
-        // Prominent Voter Header Card
+        // Prominent Voter Header Card (Compact)
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
           decoration: BoxDecoration(
             color: card2,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: yellow, width: 2),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: yellow, width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: yellow.withValues(alpha: 0.15),
-                blurRadius: 16,
-                spreadRadius: 2,
+                color: yellow.withValues(alpha: 0.12),
+                blurRadius: 12,
+                spreadRadius: 1,
               ),
             ],
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: yellow.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Text(
-                  'VOTING NOW',
-                  style: TextStyle(
-                    color: yellow,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Voter: $voter',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: ink,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
                   color: card,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: border),
                 ),
                 child: Text(
@@ -2924,9 +2910,19 @@ class _GamePageState extends State<GamePage> {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: yellow,
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Voter: $voter',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: ink,
                 ),
               ),
             ],

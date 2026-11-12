@@ -97,10 +97,66 @@ void main() {
       // Confirm restart in dialog
       if (find.text('Restart').evaluate().isNotEmpty) {
         await tester.tap(find.text('Restart'));
-        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(const Duration(milliseconds: 300));
       }
 
       // After restart, options dialog is gone and round restarted on Screen.pass
+      expect(find.text('Options'), findsNothing);
+      expect(find.text('Pass the phone'), findsOneWidget);
+    });
+
+    testWidgets('Options menu stays in background when confirmation appears, and cancel retains options menu',
+        (WidgetTester tester) async {
+      await startRoundInMode(tester, modeTitle: 'Classic');
+
+      // Tap 3 dots to open options
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Options'), findsOneWidget);
+
+      // Tap Restart round -> confirmation appears ON TOP of Options
+      await tester.tap(find.text('Restart round'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Restart Round?'), findsOneWidget);
+      expect(find.text('Options'), findsOneWidget);
+
+      // Tap Cancel in confirmation -> confirmation closes, Options remains!
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Cancel'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Restart Round?'), findsNothing);
+      expect(find.text('Options'), findsOneWidget);
+      expect(find.text('Change players'), findsOneWidget);
+
+      // Tap Change players -> confirmation appears ON TOP of Options
+      await tester.tap(find.text('Change players'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Change Players?'), findsOneWidget);
+      expect(find.text('Options'), findsOneWidget);
+
+      // Tap Cancel in confirmation -> Options remains!
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Cancel'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Change Players?'), findsNothing);
+      expect(find.text('Options'), findsOneWidget);
+
+      // Tap Back to main menu -> confirmation appears ON TOP of Options
+      await tester.tap(find.text('Back to main menu'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Return to Main Menu?'), findsOneWidget);
+      expect(find.text('Options'), findsOneWidget);
+
+      // Tap Cancel in confirmation -> Options remains!
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Cancel'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Return to Main Menu?'), findsNothing);
+      expect(find.text('Options'), findsOneWidget);
+
+      // Now tap Cancel in Options dialog -> Options closes cleanly
+      await tester.tap(find.text('Cancel'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Options'), findsNothing);
       expect(find.text('Pass the phone'), findsOneWidget);
     });
@@ -440,7 +496,6 @@ void main() {
       // Advances to Voter 2 directly
       expect(state.voteIdx, equals(1));
       expect(state.voteRevealed, isTrue);
-      expect(find.text('VOTING NOW'), findsOneWidget);
       expect(find.text('Vote 2 of 4'), findsOneWidget);
     });
 
@@ -476,6 +531,20 @@ void main() {
       final dynamic state = tester.state(find.byType(GamePage));
       final currentScreen = state.screen;
       expect(currentScreen == Screen.guess || currentScreen == Screen.result, isTrue);
+    });
+
+    testWidgets('Voting screen has no "VOTING NOW" and places "Vote 1 of 4" above voter name',
+        (WidgetTester tester) async {
+      await setupVotingScreen(tester);
+
+      expect(find.text('VOTING NOW'), findsNothing);
+      expect(find.text('Vote 1 of 4'), findsOneWidget);
+      expect(find.textContaining('Voter:'), findsOneWidget);
+
+      // Geometry check: "Vote 1 of 4" is above "Voter:"
+      final votePillTop = tester.getTopLeft(find.text('Vote 1 of 4')).dy;
+      final voterNameTop = tester.getTopLeft(find.textContaining('Voter:')).dy;
+      expect(votePillTop, lessThan(voterNameTop));
     });
   });
 }

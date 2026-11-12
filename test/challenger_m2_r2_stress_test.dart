@@ -131,7 +131,7 @@ void main() {
       await tester.tap(voteBtn);
       await tester.pump(const Duration(milliseconds: 100));
       expect(tester.takeException(), isNull);
-      expect(find.textContaining('VOTING NOW'), findsWidgets);
+      expect(find.textContaining('Vote 1 of'), findsWidgets);
     });
 
     testWidgets('VP.2: Standard compact mobile (375x667 iPhone 8 / SE 2nd gen) zero overflow',
@@ -239,7 +239,7 @@ void main() {
       await tester.tap(voteBtn);
       await tester.pump(const Duration(milliseconds: 100));
       expect(tester.takeException(), isNull);
-      expect(find.textContaining('VOTING NOW'), findsWidgets);
+      expect(find.textContaining('Vote 1 of'), findsWidgets);
     });
   });
 
@@ -438,7 +438,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(state.screen.toString(), contains('vote'));
-      expect(find.textContaining('VOTING NOW'), findsWidgets);
+      expect(find.textContaining('Vote 1 of'), findsWidgets);
     });
 
     testWidgets('QS.2: Rapid stepping across 50 questions with 10 players (maximum capacity)',
