@@ -405,6 +405,7 @@ class GamePage extends StatefulWidget {
 }
 
 class _GamePageState extends State<GamePage> {
+  bool _showIntro = true;
   Screen screen = Screen.home;
   GameMode selectedMode = availableGameModes[0];
   String? chosenCat;
@@ -1187,6 +1188,16 @@ class _GamePageState extends State<GamePage> {
                 child: ConfettiOverlay(),
               ),
             ),
+          if (_showIntro)
+            Positioned.fill(
+              child: _IntroOverlay(
+                onFinished: () {
+                  if (mounted) {
+                    setState(() => _showIntro = false);
+                  }
+                },
+              ),
+            ),
           // In-app visual overlay brightness control (dimming/brightening cleanly without device permissions)
           if (brightness < 1.0)
             Positioned.fill(
@@ -1208,31 +1219,7 @@ class _GamePageState extends State<GamePage> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // High-contrast circular backing disc with layered glow so cutout pops against film strips
-            Container(
-              width: size * 0.90,
-              height: size * 0.90,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF0E1226).withValues(alpha: 0.88),
-                border: Border.all(
-                  color: yellow.withValues(alpha: 0.28),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: yellow.withValues(alpha: 0.30),
-                    blurRadius: 40,
-                    spreadRadius: 8,
-                  ),
-                  BoxShadow(
-                    color: blue.withValues(alpha: 0.20),
-                    blurRadius: 55,
-                    spreadRadius: 14,
-                  ),
-                ],
-              ),
-            ),
+            _LogoBackingDisc(size: size),
             Image.asset(
               'assets/logo.png',
               width: size,
@@ -3614,4 +3601,166 @@ class _ConfettiPainter extends CustomPainter {
   @override
   bool shouldRepaint(_ConfettiPainter oldDelegate) =>
       oldDelegate.progress != progress;
+}
+
+// ---------- Shared Logo Backing Disc ----------
+class _LogoBackingDisc extends StatelessWidget {
+  final double size;
+
+  const _LogoBackingDisc({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    // High-contrast circular backing disc with layered glow so cutout pops against film strips
+    return Container(
+      width: size * 0.90,
+      height: size * 0.90,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFF0E1226).withValues(alpha: 0.88),
+        border: Border.all(
+          color: yellow.withValues(alpha: 0.28),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: yellow.withValues(alpha: 0.30),
+            blurRadius: 40,
+            spreadRadius: 8,
+          ),
+          BoxShadow(
+            color: blue.withValues(alpha: 0.20),
+            blurRadius: 55,
+            spreadRadius: 14,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------- App Launch Intro Overlay ----------
+class _IntroOverlay extends StatefulWidget {
+  final VoidCallback onFinished;
+
+  const _IntroOverlay({required this.onFinished});
+
+  @override
+  State<_IntroOverlay> createState() => _IntroOverlayState();
+}
+
+class _IntroOverlayState extends State<_IntroOverlay>
+    with SingleTickerProviderStateMixin {
+  // Normalized center of the magnifying glass lens inside assets/logo.png.
+  static const Alignment _lensAlignment = Alignment(0.45, -0.20);
+
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1900),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          widget.onFinished();
+        }
+      });
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final double logoSize = min(screenWidth * 0.60, 235.0);
+    final Offset lensOffset = Offset(
+      _lensAlignment.x * (logoSize / 2),
+      _lensAlignment.y * (logoSize / 2),
+    );
+
+    return AbsorbPointer(
+      child: AnimatedBuilder(
+        animation: _ctrl,
+        child: Image.asset(
+          'assets/logo.png',
+          width: logoSize,
+          height: logoSize,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+        ),
+        builder: (context, logoImage) {
+          final double t = _ctrl.value;
+
+          // Phase 1 (0.00 -> 0.18): gentle fade & settle in at larger logo size.
+          final double entranceT =
+              Curves.easeOutCubic.transform((t / 0.18).clamp(0.0, 1.0));
+          final double entranceScale = 0.88 + 0.12 * entranceT;
+
+          // Phase 2 (0.18 -> 0.36): clean hold on the emblem.
+          // Phase 3 (0.36 -> 1.00): camera pans to lens center and dives through it.
+          final double diveT = ((t - 0.36) / 0.64).clamp(0.0, 1.0);
+          final double panT =
+              Curves.easeOutCubic.transform((diveT / 0.42).clamp(0.0, 1.0));
+          final double zoomScale =
+              pow(28.0, Curves.easeInQuad.transform(diveT)).toDouble();
+
+          final double discOpacity =
+              1.0 - Curves.easeOut.transform((diveT / 0.48).clamp(0.0, 1.0));
+          final double veilOpacity = diveT <= 0.45
+              ? 1.0
+              : (1.0 -
+                      Curves.easeInOutCubic
+                          .transform(((diveT - 0.45) / 0.51).clamp(0.0, 1.0)))
+                  .clamp(0.0, 1.0);
+          final double logoFadeOut = diveT <= 0.78
+              ? 1.0
+              : (1.0 - ((diveT - 0.78) / 0.18).clamp(0.0, 1.0));
+          final double logoOpacity = (entranceT * logoFadeOut).clamp(0.0, 1.0);
+
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              ColoredBox(color: bg.withValues(alpha: veilOpacity)),
+              Center(
+                child: Opacity(
+                  opacity: logoOpacity,
+                  child: Transform.scale(
+                    scale: entranceScale,
+                    child: Transform.translate(
+                      offset: -lensOffset * panT,
+                      child: Transform.scale(
+                        scale: zoomScale,
+                        alignment: _lensAlignment,
+                        child: SizedBox(
+                          width: logoSize,
+                          height: logoSize,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Opacity(
+                                opacity: discOpacity,
+                                child: _LogoBackingDisc(size: logoSize),
+                              ),
+                              logoImage!,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 }
