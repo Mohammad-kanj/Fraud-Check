@@ -109,11 +109,11 @@ class Sound {
     } catch (_) {}
   }
 
-  static Future<void> play(String name) async {
+  static Future<void> play(String name, {double volumeFactor = 1.0}) async {
     if (!enabled || volume <= 0.0) return;
     try {
       await _player.stop();
-      await _player.setVolume(volume);
+      await _player.setVolume((volume * volumeFactor).clamp(0.0, 1.0));
       await _player.play(AssetSource('sounds/$name.wav'));
     } catch (_) {
       // Sound is a bonus, never a blocker.
@@ -125,8 +125,8 @@ class Sound {
   static Future<void> reveal() => play('reveal');
   static Future<void> back() => play('back');
   static Future<void> vote() => play('vote');
-  static Future<void> fraudWin() => play('fraud_win');
-  static Future<void> playersWin() => play('players_win');
+  static Future<void> fraudWin() => play('fraud_win', volumeFactor: 0.70);
+  static Future<void> playersWin() => play('players_win', volumeFactor: 0.70);
 
   // Compatibility aliases
   static Future<void> guess() => vote();
@@ -658,10 +658,12 @@ class _GamePageState extends State<GamePage> {
                 ),
                 const SizedBox(height: 20),
                 _primary('Vote now', () {
+                  Sound.vote();
                   Navigator.pop(ctx, 'vote');
                 }),
                 const SizedBox(height: 10),
                 _secondary('Another round', () {
+                  Sound.tap();
                   Navigator.pop(ctx, 'next');
                 }),
               ],
@@ -671,7 +673,7 @@ class _GamePageState extends State<GamePage> {
       );
       if (!mounted) return;
       if (choice == 'vote') {
-        startVoting();
+        startVoting(playSound: false);
         return;
       }
     }
@@ -688,8 +690,8 @@ class _GamePageState extends State<GamePage> {
     });
   }
 
-  void startVoting() {
-    Sound.vote();
+  void startVoting({bool playSound = true}) {
+    if (playSound) Sound.vote();
     timer?.cancel();
     setState(() {
       voteIdx = 0;
@@ -962,6 +964,7 @@ class _GamePageState extends State<GamePage> {
   }
 
   Future<void> confirmGoHome() async {
+    Sound.back();
     final ok = await _confirmAction(
       title: 'Return to Main Menu?',
       message: 'Are you sure you want to return to the main menu?',
@@ -1089,11 +1092,7 @@ class _GamePageState extends State<GamePage> {
         ),
         child: InkWell(
           onTap: () {
-            if (label == 'Back to main menu') {
-              Sound.back();
-            } else {
-              Sound.tap();
-            }
+            Sound.tap();
             onTap();
           },
           customBorder: const StadiumBorder(),
@@ -3281,11 +3280,9 @@ class _GamePageState extends State<GamePage> {
           width: double.infinity,
           height: 44,
           child: OutlinedButton(
-            onPressed: () {
-              Sound.back();
-              confirmGoHome();
-            },
+            onPressed: confirmGoHome,
             style: OutlinedButton.styleFrom(
+              backgroundColor: card2,
               foregroundColor: ink,
               side: const BorderSide(color: border),
               shape: RoundedRectangleBorder(
