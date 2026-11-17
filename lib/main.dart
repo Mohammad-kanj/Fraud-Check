@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'categories.dart';
 
@@ -134,7 +135,20 @@ class Sound {
   static Future<void> lose() => fraudWin();
 }
 
-void main() => runApp(const FraudCheckApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  List<String>? initialPlayers;
+  String? initialModeId;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    initialPlayers = prefs.getStringList('fraud_check_players');
+    initialModeId = prefs.getString('fraud_check_game_mode');
+  } catch (_) {}
+  runApp(FraudCheckApp(
+    initialPlayers: initialPlayers,
+    initialModeId: initialModeId,
+  ));
+}
 
 enum Screen {
   home,
@@ -152,7 +166,14 @@ enum Screen {
 }
 
 class FraudCheckApp extends StatelessWidget {
-  const FraudCheckApp({super.key});
+  final List<String>? initialPlayers;
+  final String? initialModeId;
+
+  const FraudCheckApp({
+    super.key,
+    this.initialPlayers,
+    this.initialModeId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +189,10 @@ class FraudCheckApp extends StatelessWidget {
           ThemeData.dark().textTheme.apply(bodyColor: ink, displayColor: ink),
         ),
       ),
-      home: const GamePage(),
+      home: GamePage(
+        initialPlayers: initialPlayers,
+        initialModeId: initialModeId,
+      ),
     );
   }
 }
@@ -398,7 +422,14 @@ QuestionPairing generateRandomQuestioningRound(int n, [Random? rng]) {
 
 // ---------- Main Game Widget ----------
 class GamePage extends StatefulWidget {
-  const GamePage({super.key});
+  final List<String>? initialPlayers;
+  final String? initialModeId;
+
+  const GamePage({
+    super.key,
+    this.initialPlayers,
+    this.initialModeId,
+  });
 
   @override
   State<GamePage> createState() => _GamePageState();
@@ -415,6 +446,89 @@ class _GamePageState extends State<GamePage> {
   double brightness = 1.0; // In-app visual overlay brightness (0.2 to 1.0)
   final Map<String, int> scores = {};
   final Set<String> usedWords = {};
+  int completedRounds = 0;
+  int currentRound = 1;
+  bool sessionHasStarted = false;
+  int get totalRoundQuestions =>
+      players.isNotEmpty ? min(players.length * 2, 10) : 1;
+  bool get _requiresScoreResetConfirmation =>
+      sessionHasStarted ||
+      completedRounds >= 1 ||
+      scores.values.any((s) => s > 0);
+
+  @override
+  void initState() {
+    super.initState();
+    _restoreInitialSettings();
+  }
+
+  void _restoreInitialSettings() {
+    if (widget.initialModeId != null) {
+      selectedMode = availableGameModes.firstWhere(
+        (m) => m.id.name == widget.initialModeId,
+        orElse: () => availableGameModes[0],
+      );
+    }
+    if (widget.initialPlayers != null && widget.initialPlayers!.isNotEmpty) {
+      players = List<String>.from(widget.initialPlayers!);
+      playerCount = players.length.clamp(
+        selectedMode.minPlayers,
+        selectedMode.maxPlayers,
+      );
+      while (players.length < playerCount) {
+        players.add('Player ${players.length + 1}');
+      }
+      if (players.length > playerCount) {
+        players = players.sublist(0, playerCount);
+      }
+    } else if (widget.initialPlayers == null && widget.initialModeId == null) {
+      _loadPersistedSettingsAsync();
+    }
+  }
+
+  Future<void> _loadPersistedSettingsAsync() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedPlayers = prefs.getStringList('fraud_check_players');
+      final savedModeId = prefs.getString('fraud_check_game_mode');
+      if (!mounted) return;
+      setState(() {
+        if (savedModeId != null) {
+          selectedMode = availableGameModes.firstWhere(
+            (m) => m.id.name == savedModeId,
+            orElse: () => availableGameModes[0],
+          );
+        }
+        if (savedPlayers != null && savedPlayers.isNotEmpty) {
+          players = List<String>.from(savedPlayers);
+          playerCount = players.length.clamp(
+            selectedMode.minPlayers,
+            selectedMode.maxPlayers,
+          );
+          while (players.length < playerCount) {
+            players.add('Player ${players.length + 1}');
+          }
+          if (players.length > playerCount) {
+            players = players.sublist(0, playerCount);
+          }
+        }
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _savePlayers() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('fraud_check_players', players);
+    } catch (_) {}
+  }
+
+  Future<void> _saveGameMode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('fraud_check_game_mode', selectedMode.id.name);
+    } catch (_) {}
+  }
 
   // Current round state.
   String roundCat = '';
@@ -472,6 +586,12 @@ class _GamePageState extends State<GamePage> {
       if (s == Screen.home || s == Screen.mode || s == Screen.category) {
         chosenCat = null;
       }
+      if (s == Screen.home) {
+        sessionHasStarted = false;
+        scores.clear();
+        completedRounds = 0;
+        currentRound = 1;
+      }
       screen = s;
     });
   }
@@ -484,10 +604,20 @@ class _GamePageState extends State<GamePage> {
       }
       players = players.sublist(0, playerCount);
     });
+    _savePlayers();
   }
 
-  void addPlayerAfter(int index) {
+  Future<void> addPlayerAfter(int index) async {
     if (players.length >= selectedMode.maxPlayers) return;
+    if (_requiresScoreResetConfirmation) {
+      final confirmed = await _confirmAction(
+        title: 'Reset Scores?',
+        message:
+            'Adding or removing a player will reset all player scores. Are you sure you want to proceed?',
+        confirmLabel: 'Reset',
+      );
+      if (!confirmed || !mounted) return;
+    }
     Sound.tap();
     setState(() {
       int n = players.length + 1;
@@ -496,21 +626,39 @@ class _GamePageState extends State<GamePage> {
       }
       players.insert(index + 1, 'Player $n');
       playerCount = players.length;
+      scores.clear();
+      completedRounds = 0;
+      currentRound = 1;
     });
+    _savePlayers();
   }
 
-  void removePlayerAt(int index) {
+  Future<void> removePlayerAt(int index) async {
     if (players.length <= selectedMode.minPlayers) return;
+    if (_requiresScoreResetConfirmation) {
+      final confirmed = await _confirmAction(
+        title: 'Reset Scores?',
+        message:
+            'Adding or removing a player will reset all player scores. Are you sure you want to proceed?',
+        confirmLabel: 'Reset',
+      );
+      if (!confirmed || !mounted) return;
+    }
     Sound.back();
     setState(() {
       players.removeAt(index);
       playerCount = players.length;
+      scores.clear();
+      completedRounds = 0;
+      currentRound = 1;
     });
+    _savePlayers();
   }
 
   void startRound() {
     final cat = chosenCat;
     if (cat == null) return;
+    sessionHasStarted = true;
     var pool =
         categories[cat]!.where((w) => !usedWords.contains('$cat|$w')).toList();
     if (pool.isEmpty) {
@@ -593,16 +741,28 @@ class _GamePageState extends State<GamePage> {
     });
   }
 
+  void _generateQuestioningPairings() {
+    final targetCount = totalRoundQuestions;
+    final askers = <int>[];
+    final targets = <int>[];
+    while (askers.length < targetCount) {
+      final pairing = generateRandomQuestioningRound(players.length);
+      askers.addAll(pairing.askers);
+      targets.addAll(pairing.targets);
+    }
+    questionTurnIdx = 0;
+    questionAskers = askers.sublist(0, targetCount);
+    questionTargets = targets.sublist(0, targetCount);
+  }
+
   void startDiscussion() {
     timer?.cancel();
-    final pairing = generateRandomQuestioningRound(players.length);
     setState(() {
-      questionTurnIdx = 0;
-      questionAskers = List<int>.from(pairing.askers);
-      questionTargets = List<int>.from(pairing.targets);
+      _generateQuestioningPairings();
       secondsLeft = timerMinutes * 60;
       screen = Screen.discuss;
     });
+
     if (timerMinutes > 0) {
       timer = Timer.periodic(const Duration(seconds: 1), (t) {
         if (!mounted) return;
@@ -614,16 +774,12 @@ class _GamePageState extends State<GamePage> {
     }
   }
 
-  void advanceQuestionTurn() async {
+  Future<void> advanceQuestionTurn() async {
     Sound.tap();
-    final roundSize = players.isNotEmpty ? players.length : 1;
-    final isRoundEnd = (questionTurnIdx + 1) % roundSize == 0;
-
-    if (isRoundEnd) {
-      final currentRound = (questionTurnIdx ~/ roundSize) + 1;
+    if (questionTurnIdx + 1 >= totalRoundQuestions) {
       final choice = await showDialog<String>(
         context: context,
-        barrierDismissible: true,
+        barrierDismissible: false,
         builder: (ctx) => Dialog(
           backgroundColor: card,
           shape: RoundedRectangleBorder(
@@ -637,10 +793,10 @@ class _GamePageState extends State<GamePage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Round $currentRound Complete!',
+                const Text(
+                  'Questioning Complete!',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                     color: ink,
@@ -648,7 +804,7 @@ class _GamePageState extends State<GamePage> {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'All players have asked a question. Are you ready to vote, or play another round of questioning?',
+                  'All questions for this round have been asked. Are you ready to vote, or play another round of questioning?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: muted,
@@ -656,38 +812,49 @@ class _GamePageState extends State<GamePage> {
                     height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 20),
-                _primary('Vote now', () {
-                  Sound.vote();
+                const SizedBox(height: 24),
+                _primary('Vote', () {
                   Navigator.pop(ctx, 'vote');
                 }),
                 const SizedBox(height: 10),
                 _secondary('Another round', () {
-                  Sound.tap();
-                  Navigator.pop(ctx, 'next');
+                  Navigator.pop(ctx, 'another');
                 }),
               ],
             ),
           ),
         ),
       );
+
       if (!mounted) return;
       if (choice == 'vote') {
-        startVoting(playSound: false);
-        return;
+        startVoting();
+      } else if (choice == 'another') {
+        Sound.tap();
+        setState(() {
+          _generateQuestioningPairings();
+        });
       }
+      return;
     }
-
     setState(() {
       questionTurnIdx++;
-      if (questionAskers.isNotEmpty && questionTargets.isNotEmpty) {
-        while (questionAskers.length <= questionTurnIdx) {
-          final nextPairing = generateRandomQuestioningRound(players.length);
-          questionAskers.addAll(nextPairing.askers);
-          questionTargets.addAll(nextPairing.targets);
-        }
-      }
     });
+  }
+
+  Future<void> onVotePressed() async {
+    if (questionTurnIdx + 1 < totalRoundQuestions) {
+      Sound.back();
+      final confirmed = await _confirmAction(
+        title: 'Start Voting?',
+        message:
+            'Questioning is still in progress. Are you sure you want to proceed to voting?',
+        confirmLabel: 'Vote',
+        confirmColor: yellow,
+      );
+      if (!confirmed || !mounted) return;
+    }
+    startVoting();
   }
 
   void startVoting({bool playSound = true}) {
@@ -976,6 +1143,160 @@ class _GamePageState extends State<GamePage> {
     }
   }
 
+  String _roundOrdinal(int n) {
+    if (n % 100 >= 11 && n % 100 <= 13) return '${n}th';
+    switch (n % 10) {
+      case 1:
+        return '${n}st';
+      case 2:
+        return '${n}nd';
+      case 3:
+        return '${n}rd';
+      default:
+        return '${n}th';
+    }
+  }
+
+  Future<void> _showScoresDialog() async {
+    Sound.tap();
+    final playerScores = players.map((p) {
+      return MapEntry(p, scores[p] ?? 0);
+    }).toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        backgroundColor: card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: border, width: 1.5),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.leaderboard_rounded, color: yellow, size: 22),
+                    SizedBox(width: 8),
+                    Text(
+                      'Current Scores',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: ink,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'After $completedRounds ${completedRounds == 1 ? 'round' : 'rounds'}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 280),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(playerScores.length, (i) {
+                        final entry = playerScores[i];
+                        final rank = i + 1;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: card2,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: rank == 1
+                                  ? yellow.withValues(alpha: 0.5)
+                                  : border,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: rank == 1
+                                      ? yellow.withValues(alpha: 0.2)
+                                      : card,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: rank == 1 ? yellow : border,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '$rank',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    color: rank == 1 ? yellow : ink,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  entry.key,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: ink,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${entry.value} pts',
+                                style: const TextStyle(
+                                  color: yellow,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: _primary('Close', () {
+                    Sound.tap();
+                    Navigator.pop(ctx);
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // Passing phone dialog: strictly for round control, NO mode switching mid-round.
   Future<void> showPassOptions() async {
     await showDialog<void>(
@@ -1144,7 +1465,10 @@ class _GamePageState extends State<GamePage> {
       canPop: screen == Screen.home,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (screen != Screen.home) {
+        if (screen == Screen.players) {
+          Sound.back();
+          go(Screen.category);
+        } else if (screen != Screen.home) {
           Sound.back();
           go(Screen.home);
         }
@@ -1230,24 +1554,35 @@ class _GamePageState extends State<GamePage> {
         ),
       );
 
-  Widget _primary(String label, VoidCallback? onPressed, {Color? color}) =>
-      SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color ?? yellow,
-            foregroundColor:
-                color != null ? Colors.white : const Color(0xFF1A1400),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            textStyle:
-                const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-          ),
-          child: Text(label, textAlign: TextAlign.center),
+  Widget _primary(
+    String label,
+    VoidCallback? onPressed, {
+    Color? color,
+    Color? textColor,
+  }) {
+    final bgColor = color ?? yellow;
+    final fgColor = textColor ??
+        ((bgColor == yellow ||
+                bgColor.computeLuminance() > 0.45 ||
+                label.trim().toLowerCase() == 'vote')
+            ? const Color(0xFF1A1400)
+            : Colors.white);
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: bgColor,
+          foregroundColor: fgColor,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
         ),
-      );
+        child: Text(label, textAlign: TextAlign.center),
+      ),
+    );
+  }
 
   Widget _actionCardButton(String label, VoidCallback onPressed) => Material(
         color: Colors.transparent,
@@ -1419,7 +1754,22 @@ class _GamePageState extends State<GamePage> {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: InkWell(
-                onTap: () {
+                onTap: () async {
+                  if (selectedMode.id != m.id &&
+                      _requiresScoreResetConfirmation) {
+                    final confirmed = await _confirmAction(
+                      title: 'Change Game Mode?',
+                      message:
+                          'Changing the game mode will reset all current player scores. Are you sure you want to proceed?',
+                      confirmLabel: 'Change',
+                    );
+                    if (!confirmed || !mounted) return;
+                    setState(() {
+                      scores.clear();
+                      completedRounds = 0;
+                      currentRound = 1;
+                    });
+                  }
                   Sound.tap();
                   setState(() {
                     selectedMode = m;
@@ -1428,6 +1778,7 @@ class _GamePageState extends State<GamePage> {
                       setPlayerCount(m.minPlayers);
                     }
                   });
+                  _saveGameMode();
                   go(Screen.category);
                 },
                 borderRadius: BorderRadius.circular(16),
@@ -1506,9 +1857,79 @@ class _GamePageState extends State<GamePage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _title('Pick a category'),
+          if (currentRound >= 2) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: card2,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.repeat_rounded, size: 16, color: yellow),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${_roundOrdinal(currentRound)} round',
+                        style: const TextStyle(
+                          color: yellow,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                OutlinedButton.icon(
+                  onPressed: _showScoresDialog,
+                  icon: const Icon(Icons.leaderboard_rounded,
+                      size: 16, color: yellow),
+                  label: const Text(
+                    'Scores',
+                    style: TextStyle(
+                      color: ink,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    side: const BorderSide(color: border),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    backgroundColor: card2,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 6),
           OutlinedButton.icon(
-            onPressed: () {
+            onPressed: () async {
+              if (_requiresScoreResetConfirmation) {
+                final confirmed = await _confirmAction(
+                  title: 'Change Game Mode?',
+                  message:
+                      'Changing the game mode will reset all current player scores. Are you sure you want to proceed?',
+                  confirmLabel: 'Change',
+                );
+                if (!confirmed || !mounted) return;
+                setState(() {
+                  scores.clear();
+                  completedRounds = 0;
+                  currentRound = 1;
+                });
+              }
               Sound.tap();
               go(Screen.mode);
             },
@@ -1650,6 +2071,7 @@ class _GamePageState extends State<GamePage> {
                         onChanged: (v) {
                           players[i] =
                               v.trim().isEmpty ? 'Player ${i + 1}' : v.trim();
+                          _savePlayers();
                         },
                         style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.w700),
@@ -1749,6 +2171,11 @@ class _GamePageState extends State<GamePage> {
                       Sound.start();
                       startRound();
                     }),
+          const SizedBox(height: 8),
+          _secondary('Back to category selection', () {
+            Sound.back();
+            go(Screen.category);
+          }),
           const SizedBox(height: 8),
           _secondary('Back to main menu', () {
             confirmGoHome();
@@ -2588,7 +3015,7 @@ class _GamePageState extends State<GamePage> {
   }
 
   Widget _discuss() {
-    final totalQuestions = players.isNotEmpty ? players.length : 1;
+    final totalQuestions = totalRoundQuestions > 0 ? totalRoundQuestions : 1;
     final bool validLists = questionAskers.isNotEmpty &&
         questionTargets.isNotEmpty &&
         questionAskers.length == questionTargets.length;
@@ -2610,20 +3037,44 @@ class _GamePageState extends State<GamePage> {
         passTopBar(),
         const SizedBox(height: 4),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           decoration: BoxDecoration(
             color: card2,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: border),
+            border:
+                Border.all(color: yellow.withValues(alpha: 0.7), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: yellow.withValues(alpha: 0.15),
+                blurRadius: 16,
+                spreadRadius: 1,
+              ),
+            ],
           ),
-          child: const Text(
-            'Discuss!',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              color: ink,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'CATEGORY',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                  color: yellow,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                roundCat.isNotEmpty ? roundCat : 'Places',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: ink,
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
@@ -2635,7 +3086,7 @@ class _GamePageState extends State<GamePage> {
             border: Border.all(color: yellow.withValues(alpha: 0.4)),
           ),
           child: Text(
-            'Round ${(safeTurn ~/ totalQuestions) + 1} • Question ${(safeTurn % totalQuestions) + 1} of $totalQuestions',
+            'Question ${min(safeTurn + 1, totalQuestions)} of $totalQuestions',
             style: const TextStyle(
                 color: yellow, fontSize: 13, fontWeight: FontWeight.w800),
           ),
@@ -2766,7 +3217,7 @@ class _GamePageState extends State<GamePage> {
 
         const SizedBox(height: 16),
         // Action button labeled 'Vote'
-        _primary('Vote', startVoting),
+        _primary('Vote', onVotePressed),
       ],
     );
   }
@@ -3262,6 +3713,8 @@ class _GamePageState extends State<GamePage> {
           child: ElevatedButton(
             onPressed: () {
               Sound.tap();
+              completedRounds++;
+              currentRound++;
               chosenCat = null;
               go(Screen.category);
             },
