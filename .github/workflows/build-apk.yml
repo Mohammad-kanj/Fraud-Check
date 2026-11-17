@@ -19,6 +19,8 @@ jobs:
           channel: stable
       - name: Install dependencies
         run: flutter pub get
+      - name: Generate Android project files
+        run: flutter create --platforms=android .
       - name: Generate app icons
         run: dart run flutter_launcher_icons
       - name: Build release APK
