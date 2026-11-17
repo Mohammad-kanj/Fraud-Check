@@ -114,8 +114,10 @@ class Sound {
     if (!enabled || volume <= 0.0) return;
     try {
       await _player.stop();
-      await _player.setVolume((volume * volumeFactor).clamp(0.0, 1.0));
+      final targetVolume = (volume * volumeFactor).clamp(0.0, 1.0);
+      await _player.setVolume(targetVolume);
       await _player.play(AssetSource('sounds/$name.wav'));
+      _player.setVolume(targetVolume).catchError((_) {});
     } catch (_) {
       // Sound is a bonus, never a blocker.
     }
@@ -126,8 +128,8 @@ class Sound {
   static Future<void> reveal() => play('reveal');
   static Future<void> back() => play('back');
   static Future<void> vote() => play('vote');
-  static Future<void> fraudWin() => play('fraud_win', volumeFactor: 0.70);
-  static Future<void> playersWin() => play('players_win', volumeFactor: 0.70);
+  static Future<void> fraudWin() => play('fraud_win', volumeFactor: 0.50);
+  static Future<void> playersWin() => play('players_win', volumeFactor: 0.50);
 
   // Compatibility aliases
   static Future<void> guess() => vote();
