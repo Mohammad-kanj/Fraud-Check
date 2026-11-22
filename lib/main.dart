@@ -100,26 +100,71 @@ const List<GameMode> availableGameModes = [
 class Sound {
   static bool enabled = true;
   static double volume = 0.8;
-  static final AudioPlayer _player = AudioPlayer()
-    ..setPlayerMode(PlayerMode.lowLatency);
+  static AudioPlayer? _player;
+
+  static AudioPlayer _ensurePlayer() {
+    if (_player == null) {
+      _player = AudioPlayer()..setReleaseMode(ReleaseMode.stop);
+    }
+    return _player!;
+  }
+
+  static Future<void> initAudioContext() async {
+    try {
+      await AudioPlayer.global.setAudioContext(AudioContext(
+        android: const AudioContextAndroid(
+          isSpeakerphoneOn: true,
+          stayAwake: false,
+          contentType: AndroidContentType.sonification,
+          usageType: AndroidUsageType.game,
+          audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+        ),
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.ambient,
+        ),
+      ));
+    } catch (_) {}
+  }
 
   static Future<void> setVolume(double val) async {
     volume = val.clamp(0.0, 1.0);
     try {
-      await _player.setVolume(volume);
+      await _player?.setVolume(volume);
     } catch (_) {}
+  }
+
+  static Future<void> pause() async {
+    try {
+      await _player?.pause();
+    } catch (_) {}
+  }
+
+  static Future<void> stop() async {
+    try {
+      await _player?.stop();
+    } catch (_) {}
+  }
+
+  static Future<void> reset() async {
+    try {
+      await _player?.stop();
+      await _player?.dispose();
+    } catch (_) {}
+    _player = null;
   }
 
   static Future<void> play(String name, {double volumeFactor = 1.0}) async {
     if (!enabled || volume <= 0.0) return;
     try {
-      await _player.stop();
+      final p = _ensurePlayer();
+      await p.stop();
       final targetVolume = (volume * volumeFactor).clamp(0.0, 1.0);
-      await _player.setVolume(targetVolume);
-      await _player.play(AssetSource('sounds/$name.wav'));
-      _player.setVolume(targetVolume).catchError((_) {});
+      await p.setVolume(targetVolume);
+      await p.play(AssetSource('sounds/$name.wav'));
+      p.setVolume(targetVolume).catchError((_) {});
     } catch (_) {
-      // Sound is a bonus, never a blocker.
+      // Sound is a bonus, never a blocker. If player faulted, reset for next playback
+      reset();
     }
   }
 
@@ -139,6 +184,7 @@ class Sound {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Sound.initAudioContext();
   List<String>? initialPlayers;
   String? initialModeId;
   try {
@@ -384,43 +430,72 @@ class FilmStripPainter extends CustomPainter {
       oldDelegate.progress != progress;
 }
 
-// ---------- Questioning Derangement Generator ----------
+// ---------- Questioning Turn Generator ----------
 class QuestionPairing {
   final List<int> askers;
   final List<int> targets;
   const QuestionPairing({required this.askers, required this.targets});
 }
 
-QuestionPairing generateRandomQuestioningRound(int n, [Random? rng]) {
+QuestionPairing generateDynamicQuestioningTurns(int n, int totalQuestions,
+    [Random? rng]) {
   final rand = rng ?? Random();
-  if (n <= 1) {
+  if (n <= 1 || totalQuestions <= 0) {
     return const QuestionPairing(askers: [], targets: []);
   }
-  if (n == 2) {
-    final a = rand.nextBool() ? [0, 1] : [1, 0];
-    return QuestionPairing(askers: a, targets: [a[1], a[0]]);
-  }
 
-  // Generate derangement of targets for [0..n-1]
-  final targetsMap = List.generate(n, (i) => i);
-  while (true) {
-    targetsMap.shuffle(rand);
-    bool isDerangement = true;
-    for (int i = 0; i < n; i++) {
-      if (targetsMap[i] == i) {
-        isDerangement = false;
-        break;
-      }
+  final askCounts = List.filled(n, 0);
+  final answerCounts = List.filled(n, 0);
+  final askers = <int>[];
+  final targets = <int>[];
+  int? lastAsker;
+
+  for (int q = 0; q < totalQuestions; q++) {
+    // 1. Pick Asker from players with lowest ask count, avoiding consecutive turns if possible
+    final minAsk = askCounts.reduce(min);
+    List<int> candidateAskers = [
+      for (int i = 0; i < n; i++)
+        if (askCounts[i] == minAsk) i
+    ];
+    if (candidateAskers.length > 1 && lastAsker != null) {
+      final nonConsecutive =
+          candidateAskers.where((i) => i != lastAsker).toList();
+      if (nonConsecutive.isNotEmpty) candidateAskers = nonConsecutive;
     }
-    if (isDerangement) break;
-  }
+    candidateAskers.shuffle(rand);
+    final asker = candidateAskers.first;
 
-  // Randomize the order of askers
-  final askers = List.generate(n, (i) => i)..shuffle(rand);
-  final targets = askers.map((a) => targetsMap[a]).toList();
+    // 2. Pick Target from other players with lowest answer count
+    final eligibleTargets = [
+      for (int i = 0; i < n; i++)
+        if (i != asker) i
+    ];
+    final minAnswer = eligibleTargets.map((i) => answerCounts[i]).reduce(min);
+    List<int> candidateTargets = [
+      for (final i in eligibleTargets)
+        if (answerCounts[i] == minAnswer) i
+    ];
+    if (candidateTargets.length > 1 && lastAsker != null) {
+      final nonPingPong =
+          candidateTargets.where((i) => i != lastAsker).toList();
+      if (nonPingPong.isNotEmpty) candidateTargets = nonPingPong;
+    }
+    candidateTargets.shuffle(rand);
+    final target = candidateTargets.first;
+
+    askers.add(asker);
+    targets.add(target);
+    askCounts[asker]++;
+    answerCounts[target]++;
+    lastAsker = asker;
+  }
 
   return QuestionPairing(askers: askers, targets: targets);
 }
+
+// Backward compatibility helper
+QuestionPairing generateRandomQuestioningRound(int n, [Random? rng]) =>
+    generateDynamicQuestioningTurns(n, n, rng);
 
 // ---------- Main Game Widget ----------
 class GamePage extends StatefulWidget {
@@ -437,7 +512,7 @@ class GamePage extends StatefulWidget {
   State<GamePage> createState() => _GamePageState();
 }
 
-class _GamePageState extends State<GamePage> {
+class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   bool _showIntro = true;
   Screen screen = Screen.home;
   GameMode selectedMode = availableGameModes[0];
@@ -461,7 +536,18 @@ class _GamePageState extends State<GamePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _restoreInitialSettings();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      Sound.stop();
+    } else if (state == AppLifecycleState.resumed) {
+      Sound.reset();
+    }
   }
 
   void _restoreInitialSettings() {
@@ -548,6 +634,7 @@ class _GamePageState extends State<GamePage> {
       ? 2
       : 1;
   int voteIdx = 0;
+  List<int> votingOrder = [];
   bool voteRevealed = false;
   int? votePick;
   Set<int> votePicks = {};
@@ -576,7 +663,9 @@ class _GamePageState extends State<GamePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     timer?.cancel();
+    Sound.stop();
     super.dispose();
   }
 
@@ -745,16 +834,11 @@ class _GamePageState extends State<GamePage> {
 
   void _generateQuestioningPairings() {
     final targetCount = totalRoundQuestions;
-    final askers = <int>[];
-    final targets = <int>[];
-    while (askers.length < targetCount) {
-      final pairing = generateRandomQuestioningRound(players.length);
-      askers.addAll(pairing.askers);
-      targets.addAll(pairing.targets);
-    }
+    final pairing =
+        generateDynamicQuestioningTurns(players.length, targetCount);
     questionTurnIdx = 0;
-    questionAskers = askers.sublist(0, targetCount);
-    questionTargets = targets.sublist(0, targetCount);
+    questionAskers = pairing.askers;
+    questionTargets = pairing.targets;
   }
 
   void startDiscussion() {
@@ -863,6 +947,7 @@ class _GamePageState extends State<GamePage> {
     if (playSound) Sound.vote();
     timer?.cancel();
     setState(() {
+      votingOrder = List.generate(players.length, (i) => i)..shuffle();
       voteIdx = 0;
       voteRevealed = true;
       votePick = null;
@@ -886,12 +971,15 @@ class _GamePageState extends State<GamePage> {
     if (picks.length != votesPerPlayer) return;
     Sound.vote();
     setState(() {
+      final actualVoter = votingOrder.isNotEmpty && voteIdx < votingOrder.length
+          ? votingOrder[voteIdx]
+          : voteIdx;
       for (final p in picks) {
         allVotes.add(p);
         voteCounts[p] = (voteCounts[p] ?? 0) + 1;
       }
-      playerVotesMulti[voteIdx] = picks.toList();
-      playerVotes[voteIdx] = picks.first;
+      playerVotesMulti[actualVoter] = picks.toList();
+      playerVotes[actualVoter] = picks.first;
       if (voteIdx < players.length - 1) {
         voteIdx++;
         votePick = null;
@@ -948,6 +1036,30 @@ class _GamePageState extends State<GamePage> {
             (scores[players[undercoverIndex!]] ?? 0) + roundPoints;
         pointsEarnedThisRound[undercoverIndex!] = roundPoints;
       }
+
+      // Reward voters who correctly guessed a fraud or undercover, even though the agent escaped
+      for (int voter = 0; voter < players.length; voter++) {
+        final isAgent =
+            fraudIndices.contains(voter) || voter == undercoverIndex;
+        if (!isAgent) {
+          final voterTargets = playerVotesMulti[voter] ??
+              (playerVotes.containsKey(voter)
+                  ? [playerVotes[voter]!]
+                  : <int>[]);
+          final correctGuesses = voterTargets
+              .where((t) => fraudIndices.contains(t) || t == undercoverIndex)
+              .length;
+          if (correctGuesses == 1) {
+            scores[players[voter]] =
+                (scores[players[voter]] ?? 0) + roundPoints;
+            pointsEarnedThisRound[voter] = roundPoints;
+          } else if (correctGuesses >= 2) {
+            scores[players[voter]] = (scores[players[voter]] ?? 0) + 150;
+            pointsEarnedThisRound[voter] = 150;
+          }
+        }
+      }
+
       screen = Screen.result;
       Sound.fraudWin();
     }
@@ -989,14 +1101,14 @@ class _GamePageState extends State<GamePage> {
               (playerVotes.containsKey(voter)
                   ? [playerVotes[voter]!]
                   : <int>[]);
-          final caughtCount = voterTargets
-              .where((t) => caughtFrauds.contains(t) || t == guessingFraudIndex)
+          final correctCount = voterTargets
+              .where((t) => fraudIndices.contains(t) || t == undercoverIndex)
               .length;
-          if (caughtCount == 1) {
+          if (correctCount == 1) {
             scores[players[voter]] =
                 (scores[players[voter]] ?? 0) + roundPoints;
             pointsEarnedThisRound[voter] = roundPoints;
-          } else if (caughtCount >= 2) {
+          } else if (correctCount >= 2) {
             // 100 pts for 1st caught agent + 50 bonus pts for catching 2nd!
             scores[players[voter]] = (scores[players[voter]] ?? 0) + 150;
             pointsEarnedThisRound[voter] = 150;
@@ -1058,7 +1170,7 @@ class _GamePageState extends State<GamePage> {
 
   String get resultLine {
     if (!fraudCaughtByMajority) {
-      return 'No fraud received more than half of the votes, so the fraud takes the round.';
+      return 'No fraud received majority votes, but players who guessed correctly were still rewarded!';
     }
     if (fraudGuessedCorrectly) {
       return '${players[guessingFraudIndex]} guessed the secret word ("$roundWord") for 50 bonus pts, but was caught and lost the round!';
@@ -1340,6 +1452,27 @@ class _GamePageState extends State<GamePage> {
                     if (mounted) {
                       Sound.start();
                       startRound();
+                    }
+                  }
+                },
+              ),
+              const SizedBox(height: 10),
+              _optionPill(
+                icon: Icons.category_rounded,
+                label: 'Change category',
+                onTap: () async {
+                  final confirmed = await _confirmAction(
+                    title: 'Change Category?',
+                    message:
+                        'This will abandon the current round and let you select a new category. Player scores will be preserved.',
+                    confirmLabel: 'Change',
+                  );
+                  if (confirmed && dialogCtx.mounted) {
+                    Navigator.pop(dialogCtx);
+                    if (mounted) {
+                      timer?.cancel();
+                      Sound.back();
+                      go(Screen.category);
                     }
                   }
                 },
@@ -3225,9 +3358,13 @@ class _GamePageState extends State<GamePage> {
   }
 
   Widget _vote() {
-    final voter = players[voteIdx];
+    final actualVoterIdx =
+        votingOrder.isNotEmpty && voteIdx < votingOrder.length
+            ? votingOrder[voteIdx]
+            : voteIdx;
+    final voter = players[actualVoterIdx];
     final others = List.generate(players.length, (i) => i)
-        .where((i) => i != voteIdx)
+        .where((i) => i != actualVoterIdx)
         .toList();
     final isMulti = votesPerPlayer > 1;
     final isReadyToVote = isMulti ? votePicks.length == 2 : votePick != null;
@@ -3409,15 +3546,56 @@ class _GamePageState extends State<GamePage> {
 
   Widget _guess() {
     final isUndercoverGuessing = guessingFraudIndex == undercoverIndex;
+    final agentRole = isUndercoverGuessing ? 'Undercover Agent' : 'Fraud';
     final agentText = isUndercoverGuessing ? 'An undercover agent' : 'A fraud';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         passTopBar(),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: red.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: red, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: red.withValues(alpha: 0.2),
+                blurRadius: 16,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'CAUGHT BY MAJORITY VOTE',
+                style: TextStyle(
+                  color: red,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${players[guessingFraudIndex]} ($agentRole)',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: ink,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
         _title('Last chance!'),
         _mutedText(
-            '$agentText was caught by majority vote, but they get one final guess. ${players[guessingFraudIndex]}, pick the word you think was the secret word. Guess right to steal the round!'),
+            '$agentText was caught by majority vote, but gets one final guess. ${players[guessingFraudIndex]}, pick the word you think was the secret word. Guess right to earn 50 bonus pts!'),
         const SizedBox(height: 10),
         ...List.generate(guessOptions.length, (i) {
           final selected = guessPick == i;
@@ -3536,43 +3714,91 @@ class _GamePageState extends State<GamePage> {
                 ),
               ),
               if (fraudIndices.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                // Fraud Pill
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: card2,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: yellow.withValues(alpha: 0.4)),
-                  ),
-                  child: Text(
-                    selectedMode.fraudCount > 1
-                        ? 'Frauds: ${fraudIndices.map((i) => players[i]).join(', ')}'
-                        : 'Fraud: ${fraudIndices.map((i) => players[i]).join(', ')}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, color: ink, fontSize: 14),
-                  ),
-                ),
+                const SizedBox(height: 12),
+                ...fraudIndices.map((fIdx) {
+                  final isCaught = caughtFrauds.contains(fIdx);
+                  final status = isCaught ? 'Caught' : 'Escaped';
+                  final statusColor = isCaught ? green : red;
+                  return Container(
+                    margin: const EdgeInsets.symmetric(vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: card2,
+                      borderRadius: BorderRadius.circular(12),
+                      border:
+                          Border.all(color: statusColor.withValues(alpha: 0.6)),
+                    ),
+                    child: RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 14),
+                        children: [
+                          const TextSpan(
+                            text: 'Fraud: ',
+                            style: TextStyle(color: yellow),
+                          ),
+                          TextSpan(
+                            text: '${players[fIdx]}  ',
+                            style: const TextStyle(color: ink),
+                          ),
+                          TextSpan(
+                            text: '($status)',
+                            style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
               ],
               if (undercoverIndex != null) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: card2,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: border),
-                  ),
-                  child: Text(
-                    'Undercover: ${players[undercoverIndex!]} ($roundUndercoverWord)',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, color: ink, fontSize: 13),
-                  ),
-                ),
+                const SizedBox(height: 4),
+                Builder(builder: (ctx) {
+                  final isCaught = caughtFrauds.contains(undercoverIndex!);
+                  final status = isCaught ? 'Caught' : 'Escaped';
+                  final statusColor = isCaught ? green : red;
+                  return Container(
+                    margin: const EdgeInsets.symmetric(vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: card2,
+                      borderRadius: BorderRadius.circular(12),
+                      border:
+                          Border.all(color: statusColor.withValues(alpha: 0.6)),
+                    ),
+                    child: RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 13),
+                        children: [
+                          const TextSpan(
+                            text: 'Undercover: ',
+                            style: TextStyle(color: blue),
+                          ),
+                          TextSpan(
+                            text:
+                                '${players[undercoverIndex!]} ($roundUndercoverWord)  ',
+                            style: const TextStyle(color: ink),
+                          ),
+                          TextSpan(
+                            text: '($status)',
+                            style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
               ],
             ],
           ),
