@@ -1038,6 +1038,11 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       }
 
       // Reward voters who correctly guessed a fraud or undercover, even though the agent escaped
+      final totalAgents =
+          (selectedMode.fraudCount > 0 ? selectedMode.fraudCount : 0) +
+              (selectedMode.hasUndercover ? 1 : 0);
+      final pointsPerGuess = totalAgents >= 2 ? 50 : roundPoints;
+
       for (int voter = 0; voter < players.length; voter++) {
         final isAgent =
             fraudIndices.contains(voter) || voter == undercoverIndex;
@@ -1049,13 +1054,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           final correctGuesses = voterTargets
               .where((t) => fraudIndices.contains(t) || t == undercoverIndex)
               .length;
-          if (correctGuesses == 1) {
-            scores[players[voter]] =
-                (scores[players[voter]] ?? 0) + roundPoints;
-            pointsEarnedThisRound[voter] = roundPoints;
-          } else if (correctGuesses >= 2) {
-            scores[players[voter]] = (scores[players[voter]] ?? 0) + 150;
-            pointsEarnedThisRound[voter] = 150;
+          if (correctGuesses > 0) {
+            final earned = correctGuesses * pointsPerGuess;
+            scores[players[voter]] = (scores[players[voter]] ?? 0) + earned;
+            pointsEarnedThisRound[voter] = earned;
           }
         }
       }
@@ -1093,6 +1095,11 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       }
 
       // All caught agents finished guessing! Award points to voters:
+      final totalAgents =
+          (selectedMode.fraudCount > 0 ? selectedMode.fraudCount : 0) +
+              (selectedMode.hasUndercover ? 1 : 0);
+      final pointsPerGuess = totalAgents >= 2 ? 50 : roundPoints;
+
       for (int voter = 0; voter < players.length; voter++) {
         final isAgent =
             fraudIndices.contains(voter) || voter == undercoverIndex;
@@ -1104,14 +1111,10 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           final correctCount = voterTargets
               .where((t) => fraudIndices.contains(t) || t == undercoverIndex)
               .length;
-          if (correctCount == 1) {
-            scores[players[voter]] =
-                (scores[players[voter]] ?? 0) + roundPoints;
-            pointsEarnedThisRound[voter] = roundPoints;
-          } else if (correctCount >= 2) {
-            // 100 pts for 1st caught agent + 50 bonus pts for catching 2nd!
-            scores[players[voter]] = (scores[players[voter]] ?? 0) + 150;
-            pointsEarnedThisRound[voter] = 150;
+          if (correctCount > 0) {
+            final earned = correctCount * pointsPerGuess;
+            scores[players[voter]] = (scores[players[voter]] ?? 0) + earned;
+            pointsEarnedThisRound[voter] = earned;
           }
         }
       }
@@ -1890,30 +1893,31 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
               padding: const EdgeInsets.only(bottom: 12),
               child: InkWell(
                 onTap: () async {
-                  if (selectedMode.id != m.id &&
-                      _requiresScoreResetConfirmation) {
-                    final confirmed = await _confirmAction(
-                      title: 'Change Game Mode?',
-                      message:
-                          'Changing the game mode will reset all current player scores. Are you sure you want to proceed?',
-                      confirmLabel: 'Change',
-                    );
-                    if (!confirmed || !mounted) return;
+                  if (selectedMode.id != m.id) {
+                    if (_requiresScoreResetConfirmation) {
+                      final confirmed = await _confirmAction(
+                        title: 'Change Game Mode?',
+                        message:
+                            'Changing the game mode will reset all current player scores. Are you sure you want to proceed?',
+                        confirmLabel: 'Change',
+                      );
+                      if (!confirmed || !mounted) return;
+                      setState(() {
+                        scores.clear();
+                        completedRounds = 0;
+                        currentRound = 1;
+                      });
+                    }
                     setState(() {
-                      scores.clear();
-                      completedRounds = 0;
-                      currentRound = 1;
+                      selectedMode = m;
+                      chosenCat = null;
+                      if (playerCount < m.minPlayers) {
+                        setPlayerCount(m.minPlayers);
+                      }
                     });
+                    _saveGameMode();
                   }
                   Sound.tap();
-                  setState(() {
-                    selectedMode = m;
-                    chosenCat = null;
-                    if (playerCount < m.minPlayers) {
-                      setPlayerCount(m.minPlayers);
-                    }
-                  });
-                  _saveGameMode();
                   go(Screen.category);
                 },
                 borderRadius: BorderRadius.circular(16),
@@ -2050,21 +2054,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           ],
           const SizedBox(height: 6),
           OutlinedButton.icon(
-            onPressed: () async {
-              if (_requiresScoreResetConfirmation) {
-                final confirmed = await _confirmAction(
-                  title: 'Change Game Mode?',
-                  message:
-                      'Changing the game mode will reset all current player scores. Are you sure you want to proceed?',
-                  confirmLabel: 'Change',
-                );
-                if (!confirmed || !mounted) return;
-                setState(() {
-                  scores.clear();
-                  completedRounds = 0;
-                  currentRound = 1;
-                });
-              }
+            onPressed: () {
               Sound.tap();
               go(Screen.mode);
             },
@@ -2614,8 +2604,9 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
                 Text(
                   '• Direct Voting: Host asks each player for their vote directly on screen.\n\n'
                   '• Last chance: If a fraud is caught by majority vote (>= 50%), they get 4 word options to guess the secret word.\n\n'
-                  '• Caught Fraud guesses correctly: The fraud earns 50 points, but loses the round! All players who voted for that fraud earn +100 points.\n\n'
-                  '• Caught Fraud misses guess: The fraud earns 0 points. All players who voted for that fraud earn +100 points!\n\n'
+                  '• Voting Rewards: In 1-imposter modes, players earn +100 points for guessing the imposter. In 2-imposter modes (Two Frauds, Chaos), players earn +50 points per correctly identified imposter!\n\n'
+                  '• Caught Fraud guesses correctly: The fraud earns 50 points, but loses the round!\n\n'
+                  '• Caught Fraud misses guess: The fraud earns 0 points.\n\n'
                   '• Fraud Escapes: If no fraud receives majority votes, frauds win the round and earn +100 points each.\n\n'
                   '• Undercover: Earns +100 points if they vote for the fraud or survive unexposed.',
                   style: TextStyle(color: muted, height: 1.5),
@@ -3546,53 +3537,12 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
 
   Widget _guess() {
     final isUndercoverGuessing = guessingFraudIndex == undercoverIndex;
-    final agentRole = isUndercoverGuessing ? 'Undercover Agent' : 'Fraud';
     final agentText = isUndercoverGuessing ? 'An undercover agent' : 'A fraud';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         passTopBar(),
-        const SizedBox(height: 6),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: red.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: red, width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: red.withValues(alpha: 0.2),
-                blurRadius: 16,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              const Text(
-                'CAUGHT BY MAJORITY VOTE',
-                style: TextStyle(
-                  color: red,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${players[guessingFraudIndex]} ($agentRole)',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: ink,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 4),
         _title('Last chance!'),
         _mutedText(
             '$agentText was caught by majority vote, but gets one final guess. ${players[guessingFraudIndex]}, pick the word you think was the secret word. Guess right to earn 50 bonus pts!'),
@@ -3693,6 +3643,33 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
           ),
           child: Column(
             children: [
+              // Category Hero Badge
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: card,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: yellow.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.category_rounded, size: 14, color: yellow),
+                    const SizedBox(width: 6),
+                    Text(
+                      'CATEGORY: ${roundCat.isNotEmpty ? roundCat.toUpperCase() : "PLACES"}',
+                      style: const TextStyle(
+                        color: yellow,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               // Secret Word Hero Display
               const Text('SECRET WORD',
                   style: TextStyle(
@@ -3715,90 +3692,41 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
               ),
               if (fraudIndices.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                ...fraudIndices.map((fIdx) {
-                  final isCaught = caughtFrauds.contains(fIdx);
-                  final status = isCaught ? 'Caught' : 'Escaped';
-                  final statusColor = isCaught ? green : red;
-                  return Container(
-                    margin: const EdgeInsets.symmetric(vertical: 3),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: card2,
-                      borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: statusColor.withValues(alpha: 0.6)),
-                    ),
-                    child: RichText(
-                      textAlign: TextAlign.center,
-                      text: TextSpan(
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 14),
-                        children: [
-                          const TextSpan(
-                            text: 'Fraud: ',
-                            style: TextStyle(color: yellow),
-                          ),
-                          TextSpan(
-                            text: '${players[fIdx]}  ',
-                            style: const TextStyle(color: ink),
-                          ),
-                          TextSpan(
-                            text: '($status)',
-                            style: TextStyle(
-                              color: statusColor,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: card2,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: yellow.withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    selectedMode.fraudCount > 1
+                        ? 'Frauds: ${fraudIndices.map((i) => players[i]).join(', ')}'
+                        : 'Fraud: ${fraudIndices.map((i) => players[i]).join(', ')}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, color: ink, fontSize: 14),
+                  ),
+                ),
               ],
               if (undercoverIndex != null) ...[
-                const SizedBox(height: 4),
-                Builder(builder: (ctx) {
-                  final isCaught = caughtFrauds.contains(undercoverIndex!);
-                  final status = isCaught ? 'Caught' : 'Escaped';
-                  final statusColor = isCaught ? green : red;
-                  return Container(
-                    margin: const EdgeInsets.symmetric(vertical: 3),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: card2,
-                      borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: statusColor.withValues(alpha: 0.6)),
-                    ),
-                    child: RichText(
-                      textAlign: TextAlign.center,
-                      text: TextSpan(
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 13),
-                        children: [
-                          const TextSpan(
-                            text: 'Undercover: ',
-                            style: TextStyle(color: blue),
-                          ),
-                          TextSpan(
-                            text:
-                                '${players[undercoverIndex!]} ($roundUndercoverWord)  ',
-                            style: const TextStyle(color: ink),
-                          ),
-                          TextSpan(
-                            text: '($status)',
-                            style: TextStyle(
-                              color: statusColor,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: card2,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: border),
+                  ),
+                  child: Text(
+                    'Undercover: ${players[undercoverIndex!]} ($roundUndercoverWord)',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, color: ink, fontSize: 13),
+                  ),
+                ),
               ],
             ],
           ),
