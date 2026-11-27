@@ -10,7 +10,7 @@ One secret word. At least one Fraud trying to blend in. Ask sharp questions, rea
 
 Ready to play on Android? Grab the latest release APK directly from GitHub:
 
-1. Open the **[GitHub Releases](https://github.com/Mohammad-kanj/Fraud-Check/releases)** page and download the latest `app-release.apk` (under **Assets**).
+1. Open the **[GitHub Releases](https://github.com/Mohammad-kanj/Fraud-Check/releases)** page and download the latest `Fraud-Check.apk` (under **Assets**).
 2. Open the downloaded `.apk` file on your Android device.
 3. If prompted, allow your browser or file manager to install apps from unknown sources.
 4. Tap **Install**, launch **Fraud Check**, and pass the phone around.
